@@ -1,0 +1,50 @@
+# Base image for the final layer
+ARG BASE_IMAGE=quay.io/centos-bootc/centos-bootc:stream9
+
+FROM ${BASE_IMAGE}
+
+RUN <<EOT
+  set -euxo pipefail
+
+  # Add the EPEL repositories, jq and tmux
+  dnf install -y \
+    epel-release jq tmux
+
+  # From the EPEL repositories, add:
+  # screen, pv, sqlite
+  dnf install -y --enablerepo=epel \
+    screen pv sqlite
+
+  # Add restic, fetching the RPM from the official GitHub repository
+  # The RPM that is shipped in the official repositories is often very outdated
+  ARCH=""
+  case $(uname -m) in
+    x86_64) ARCH="amd64" ;;
+    aarch64) ARCH="arm64" ;;
+  esac
+  # Get the latest release
+  LATEST_VER=$(curl -Ls "https://api.github.com/repos/restic/restic/releases/latest" | jq ".tag_name" -r)
+  # Remove leading v
+  LATEST_VER=${LATEST_VER:1}
+  DOWNLOAD_URL=$(curl -sL https://api.github.com/repos/restic/restic/releases/latest | jq -r ".assets[] | select(.name == \"restic_${LATEST_VER}_linux_amd64.bz2\") | .browser_download_url")
+  # Download the binary
+  curl -sL "$DOWNLOAD_URL" | bunzip2 > restic.dl
+  chmod +x restic.dl
+  mv restic.dl /usr/local/bin/restic
+  /usr/local/bin/restic version
+
+  # Add Tailscale
+  dnf config-manager --add-repo https://pkgs.tailscale.com/stable/centos/9/tailscale.repo
+  dnf install -y tailscale
+  systemctl enable tailscaled
+
+  # Add gotop, fetching the RPM from the official GitHub repository
+  # This is installed on x86_64 only as pre-compiled RPMs are not available for other archs from the project
+  if [ "$(uname -m)" = "x86_64" ]; then
+    GOTOP_VERSION=$(curl -Ls "https://api.github.com/repos/xxxserxxx/gotop/releases/latest" | jq ".tag_name" -r)
+    dnf install -y "https://github.com/xxxserxxx/gotop/releases/download/${GOTOP_VERSION}/gotop_${GOTOP_VERSION}_linux_amd64.rpm"
+  fi
+
+  # Clean-up
+  dnf clean all
+EOT

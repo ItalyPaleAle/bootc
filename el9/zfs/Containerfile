@@ -1,0 +1,58 @@
+# Base image for the final layer
+ARG BASE_IMAGE=quay.io/centos-bootc/centos-bootc:stream9
+
+# Using https://openzfs.github.io/openzfs-docs/Developer%20Resources/Custom%20Packages.html
+FROM quay.io/centos-bootc/centos-bootc:stream9 AS builder
+WORKDIR /etc/yum.repos.d
+# We can't use `uname -r` as it will pick up the host kernel version
+RUN \
+  rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}' \
+    | tee /kernel-version.txt
+# Install build depdendencies
+RUN \
+  dnf install -y \
+    jq epel-release make autoconf automake gcc libtool rpm-build libblkid-devel \
+    libuuid-devel libudev-devel openssl-devel zlib-devel libaio-devel libattr-devel elfutils-libelf-devel \
+    kernel-$(cat /kernel-version.txt) kernel-modules-$(cat /kernel-version.txt) kernel-devel-$(cat /kernel-version.txt) \
+    python3 python3-devel python3-setuptools python3-packaging python3-cffi libffi-devel git libcurl-devel
+RUN \
+  dnf install -y --enablerepo=epel --enablerepo=crb \
+    dkms libtirpc-devel ncompress
+WORKDIR /
+# Uses project_id from: https://release-monitoring.org/project/11706/
+RUN \
+  curl "https://release-monitoring.org/api/v2/versions/?project_id=11706" \
+    | jq --raw-output '.stable_versions[0]' | tee /zfs_version.txt
+RUN \
+  curl -L -O https://github.com/openzfs/zfs/releases/download/zfs-$(cat /zfs_version.txt)/zfs-$(cat /zfs_version.txt).tar.gz \
+  && tar xzf zfs-$(cat /zfs_version.txt).tar.gz \
+  && mv zfs-$(cat /zfs_version.txt) zfs
+WORKDIR /zfs
+RUN \
+  ./configure -with-linux=/usr/src/kernels/$(cat /kernel-version.txt)/ -with-linux-obj=/usr/src/kernels/$(cat /kernel-version.txt)/ \
+  && make -j1 rpm-utils rpm-kmod
+RUN ls -al /zfs/*.rpm
+
+# Final layer
+FROM ${BASE_IMAGE}
+
+# ZFS
+# We install a bunch of RPMs, probably more than needed
+COPY --from=builder /zfs/*.rpm /zfs/
+RUN \
+  rm \
+    /zfs/*devel*.rpm \
+    /zfs/zfs-test*.rpm \
+  && dnf install -y \
+    /zfs/*.$(rpm -qa kernel --queryformat '%{ARCH}').rpm \
+  # Auto-load ZFS module
+  && depmod -a "$(rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')" \
+  && echo "zfs" > /etc/modules-load.d/zfs.conf \
+  # We don't want any files on /var and /zfs
+  && rm -rf /var/lib/pcp /zfs \
+  && dnf clean all
+
+# Add hdparm and smartmontools
+RUN \
+  dnf install -y hdparm smartmontools \
+  && dnf clean all
