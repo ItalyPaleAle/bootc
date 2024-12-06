@@ -1,0 +1,227 @@
+name: "Build Containers"
+
+on:
+  schedule:
+    # https://crontab.guru/#42_16_*_*_1,5
+    - cron: '42 16 * * 1,5'
+  push:
+    branches: [ "main" ]
+
+env:
+  # Docker registry
+  REGISTRY: ghcr.io
+  # github.repository as <account>/<repo>
+  IMAGE_NAME_BASE: ${{ github.repository }}
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Ensure that IMAGE_NAME_BASE is all lowercase
+      - name: Lowercase IMAGE_NAME_BASE
+        run: |
+          echo "IMAGE_NAME_BASE=${IMAGE_NAME_BASE,,}" >>${GITHUB_ENV}
+
+      # Install the cosign tool
+      # https://github.com/sigstore/cosign-installer
+      - name: Install cosign
+        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da #v3.7.0
+        with:
+          cosign-release: 'v2.4.1'
+
+      # Add support for building for other platforms with QEMU
+      # https://github.com/docker/setup-qemu-action
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
+        with:
+          platforms: "linux/amd64,linux/arm64"
+
+      # Set up BuildKit Docker container builder to be able to build multi-platform images and export cache
+      # https://github.com/docker/setup-buildx-action
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
+
+      # Login against a Docker registry
+      # https://github.com/docker/login-action
+      - name: Log into registry ${{ env.REGISTRY }}
+        uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Extract metadata for Docker image for base
+      # https://github.com/docker/metadata-action
+      - name: "Extract Docker metadata: base"
+        id: meta-base
+        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/base
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=schedule,pattern={{date 'YYYYMMDD'}}
+
+      # Extract metadata for Docker image for tailscale
+      # https://github.com/docker/metadata-action
+      - name: "Extract Docker metadata: tailscale"
+        id: meta-tailscale
+        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/tailscale
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=schedule,pattern={{date 'YYYYMMDD'}}
+
+      # Extract metadata for Docker image for zfs
+      # https://github.com/docker/metadata-action
+      - name: "Extract Docker metadata: zfs"
+        id: meta-zfs
+        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/zfs
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=schedule,pattern={{date 'YYYYMMDD'}}
+
+      # Extract metadata for Docker image for monitoring
+      # https://github.com/docker/metadata-action
+      #- name: "Extract Docker metadata: monitoring"
+      #  id: meta-monitoring
+      #  uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
+      #  with:
+      #    images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/monitoring
+      #    tags: |
+      #      type=raw,value=latest,enable={{is_default_branch}}
+      #      type=schedule,pattern={{date 'YYYYMMDD'}}
+
+      # Extract metadata for Docker image for monitoring
+      # https://github.com/docker/metadata-action
+      #- name: "Extract Docker metadata: monitoring-zfs"
+      #  id: meta-monitoring-zfs
+      #  uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
+      #  with:
+      #    images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/monitoring-zfs
+      #    tags: |
+      #      type=raw,value=latest,enable={{is_default_branch}}
+      #      type=schedule,pattern={{date 'YYYYMMDD'}}
+
+      # Build and push Docker image for base
+      # For linux/amd64 only
+      # https://github.com/docker/build-push-action
+      - name: "Build and push Docker image: base"
+        id: build-and-push-base
+        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
+        with:
+          context: ./base
+          push: true
+          platforms: "linux/amd64,linux/arm64"
+          tags: ${{ steps.meta-base.outputs.tags }}
+          labels: ${{ steps.meta-base.outputs.labels }}
+          file: ./el9/base/Containerfile
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Build and push Docker image for tailscale
+      # For linux/amd64 only
+      # https://github.com/docker/build-push-action
+      - name: "Build and push Docker image: tailscale"
+        id: build-and-push-tailscale
+        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
+        with:
+          context: ./tailscale
+          push: true
+          platforms: "linux/amd64,linux/arm64"
+          tags: ${{ steps.meta-tailscale.outputs.tags }}
+          labels: ${{ steps.meta-tailscale.outputs.labels }}
+          file: ./el9/tailscale/Containerfile
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Build and push Docker image for monitoring
+      # For linux/amd64 only
+      # https://github.com/docker/build-push-action
+      #- name: "Build and push Docker image: monitoring"
+      #  id: build-and-push-monitoring
+      #  uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
+      #  with:
+      #    context: ./monitoring
+      #    push: true
+      #    build-args: |
+      #      BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/base:latest
+      #    platforms: "linux/amd64"
+      #    tags: ${{ steps.meta-monitoring.outputs.tags }}
+      #    labels: ${{ steps.meta-monitoring.outputs.labels }}
+      #    file: ./el9/monitoring/Containerfile
+      #    cache-from: type=gha
+      #    cache-to: type=gha,mode=max
+
+      # Build and push Docker image for zfs
+      # For linux/amd64 only
+      # https://github.com/docker/build-push-action
+      - name: "Build and push Docker image: zfs"
+        id: build-and-push-zfs
+        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
+        with:
+          context: ./zfs
+          push: true
+          build-args: |
+            BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/base:latest
+          platforms: "linux/amd64"
+          tags: ${{ steps.meta-zfs.outputs.tags }}
+          labels: ${{ steps.meta-zfs.outputs.labels }}
+          file: ./el9/zfs/Containerfile
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Build and push Docker image for monitoring-zfs
+      # For linux/amd64 only
+      # https://github.com/docker/build-push-action
+      #- name: "Build and push Docker image: monitoring-zfs"
+      #  id: build-and-push-monitoring-zfs
+      #  uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
+      #  with:
+      #    context: ./monitoring
+      #    push: true
+      #    build-args: |
+      #      BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/zfs:latest
+      #    platforms: "linux/amd64"
+      #    tags: ${{ steps.meta-monitoring-zfs.outputs.tags }}
+      #    labels: ${{ steps.meta-monitoring-zfs.outputs.labels }}
+      #    file: ./el9/monitoring/Containerfile
+      #    cache-from: type=gha
+      #    cache-to: type=gha,mode=max
+
+      # Sign the resulting Docker images digests.
+      # This will only write to the public Rekor transparency log when the Docker repository is public to avoid leaking data. 
+      # https://github.com/sigstore/cosign
+      - name: Sign the published Docker images
+        env:
+          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
+          TAGS_BASE: ${{ steps.meta-base.outputs.tags }}
+          TAGS_TAILSCALE: ${{ steps.meta-tailscale.outputs.tags }}
+          TAGS_ZFS: ${{ steps.meta-zfs.outputs.tags }}
+          #TAGS_MONITORING: ${{ steps.meta-monitoring.outputs.tags }}
+          #TAGS_MONITORING_ZFS: ${{ steps.meta-monitoring-zfs.outputs.tags }}
+          DIGEST_BASE: ${{ steps.build-and-push-base.outputs.digest }}
+          DIGEST_TAILSCALE: ${{ steps.build-and-push-tailscale.outputs.digest }}
+          DIGEST_ZFS: ${{ steps.build-and-push-zfs.outputs.digest }}
+          #DIGEST_MONITORING: ${{ steps.build-and-push-monitoring.outputs.digest }}
+          #DIGEST_MONITORING_ZFS: ${{ steps.build-and-push-monitoring-zfs.outputs.digest }}
+        # This step uses the identity token to provision an ephemeral certificate against the sigstore community Fulcio instance.
+        run: |
+          echo "${TAGS_BASE}" | xargs -I {} cosign sign --yes {}@${DIGEST_BASE}
+          echo "${TAGS_TAILSCALE}" | xargs -I {} cosign sign --yes {}@${DIGEST_TAILSCALE}
+          echo "${TAGS_ZFS}" | xargs -I {} cosign sign --yes {}@${DIGEST_ZFS}
+          #echo "${TAGS_MONITORING}" | xargs -I {} cosign sign --yes {}@${DIGEST_MONITORING}
+          #echo "${TAGS_MONITORING_ZFS}" | xargs -I {} cosign sign --yes {}@${DIGEST_MONITORING_ZFS}
