@@ -1,6 +1,6 @@
 # bootc images for CentOS Stream
 
-Custom images for CentOS that can be used with bootc.
+Custom images for CentOS Stream that can be used with bootc. Currently supports CentOS Stream 9.
 
 - [`tailscale`](#tailscale-image): Includes Tailscale
 - [`base`](#base-image): Includes Tailscale and Cloudflare Tunnel client (cloudflared)
@@ -10,9 +10,13 @@ Custom images for CentOS that can be used with bootc.
 - [`monitoring-zfs`](#monitoring-zfs-image): Includes Grafana Alloy (built on top of `zfs`)
 -->
 
-These images are built using GitHub Actions every Monday and Friday, from the upstream images of CentOS Stream
+These images are built using GitHub Actions every Monday and Friday, from the upstream images of CentOS Stream.
 
 Images are published on GitHub Packages and available for linux/amd64 and linux/arm64 (except ZFS).
+
+## Use with RHEL
+
+The Containerfiles are compatible with RHEL too, currently supporting RHEL 9. The RHEL-based images are not published from this repo automatically.
 
 ## `tailscale` image
 
