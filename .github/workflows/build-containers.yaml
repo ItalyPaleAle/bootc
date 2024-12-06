@@ -123,7 +123,7 @@ jobs:
         id: build-and-push-base
         uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
         with:
-          context: ./base
+          context: ./el9/base
           push: true
           platforms: "linux/amd64,linux/arm64"
           tags: ${{ steps.meta-base.outputs.tags }}
@@ -139,7 +139,7 @@ jobs:
         id: build-and-push-tailscale
         uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
         with:
-          context: ./tailscale
+          context: ./el9/tailscale
           push: true
           platforms: "linux/amd64,linux/arm64"
           tags: ${{ steps.meta-tailscale.outputs.tags }}
@@ -155,7 +155,7 @@ jobs:
       #  id: build-and-push-monitoring
       #  uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
       #  with:
-      #    context: ./monitoring
+      #    context: ./el9/monitoring
       #    push: true
       #    build-args: |
       #      BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/base:latest
@@ -173,7 +173,7 @@ jobs:
         id: build-and-push-zfs
         uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
         with:
-          context: ./zfs
+          context: ./el9/zfs
           push: true
           build-args: |
             BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/base:latest
@@ -191,7 +191,7 @@ jobs:
       #  id: build-and-push-monitoring-zfs
       #  uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
       #  with:
-      #    context: ./monitoring
+      #    context: ./el9/monitoring
       #    push: true
       #    build-args: |
       #      BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/zfs:latest
