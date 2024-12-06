@@ -23,14 +23,17 @@ RUN <<EOT
     aarch64) ARCH="arm64" ;;
   esac
   # Get the latest release
-  LATEST_VER=$(curl -Ls "https://api.github.com/repos/restic/restic/releases/latest" | jq ".tag_name" -r)
+  RESTIC_VERSION=$(curl -Ls "https://api.github.com/repos/restic/restic/releases/latest" | jq ".tag_name" -r)
   # Remove leading v
-  LATEST_VER=${LATEST_VER:1}
-  DOWNLOAD_URL=$(curl -sL https://api.github.com/repos/restic/restic/releases/latest | jq -r ".assets[] | select(.name == \"restic_${LATEST_VER}_linux_amd64.bz2\") | .browser_download_url")
+  RESTIC_VERSION=${RESTIC_VERSION:1}
+  RESTIC_DOWNLOAD_URL=$(curl -sL https://api.github.com/repos/restic/restic/releases/latest | jq -r ".assets[] | select(.name == \"restic_${RESTIC_VERSION}_linux_${ARCH}.bz2\") | .browser_download_url")
+  RESTIC_SHASUMS_URL=$(curl -sL https://api.github.com/repos/restic/restic/releases/latest | jq -r ".assets[] | select(.name == \"SHA256SUMS\") | .browser_download_url")
   # Download the binary
-  curl -sL "$DOWNLOAD_URL" | bunzip2 > restic.dl
-  chmod +x restic.dl
-  mv restic.dl /usr/local/bin/restic
+  curl -sLO "$RESTIC_DOWNLOAD_URL"
+  curl -sLo restic-shasums "$RESTIC_SHASUMS_URL"
+  cat restic-shasums | sha256sum --check --ignore-missing --status
+  bunzip2 -c "restic_${RESTIC_VERSION}_linux_${ARCH}.bz2" > /usr/local/bin/restic
+  chmod +x /usr/local/bin/restic
   /usr/local/bin/restic version
 
   # Add Tailscale
@@ -41,8 +44,12 @@ RUN <<EOT
   # Add gotop, fetching the RPM from the official GitHub repository
   # This is installed on x86_64 only as pre-compiled RPMs are not available for other archs from the project
   if [ "$(uname -m)" = "x86_64" ]; then
-    GOTOP_VERSION=$(curl -Ls "https://api.github.com/repos/xxxserxxx/gotop/releases/latest" | jq ".tag_name" -r)
-    dnf install -y "https://github.com/xxxserxxx/gotop/releases/download/${GOTOP_VERSION}/gotop_${GOTOP_VERSION}_linux_amd64.rpm"
+    # Hardcoding these since gotop doesn't publish SHASUM files, and they haven't published a new release in a while
+    GOTOP_VERSION="v4.2.0"
+    GOTOP_SHA256SUM="9c3f2f072b82918c56a15a229b528ba7d1e01d54cc809f64555852fa775ef8a6"
+    curl -Lo gotop.rpm "https://github.com/xxxserxxx/gotop/releases/download/${GOTOP_VERSION}/gotop_${GOTOP_VERSION}_linux_amd64.rpm"
+    echo "${GOTOP_SHA256SUM} gotop.rpm" | sha256sum --check --status
+    dnf install -y gotop.rpm
   fi
 
   # Clean-up
