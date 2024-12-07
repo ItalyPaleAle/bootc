@@ -55,8 +55,6 @@ Includes:
 
 - Everything in the [`base` image](#base-image)
 - ZFS as a kernel module
-- [Tailscale](https://tailscale.com/)
-- [Cloudflare Tunnel client](https://github.com/cloudflare/cloudflared) (cloudflared)
 
 Image:
 

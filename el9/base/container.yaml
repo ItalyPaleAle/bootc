@@ -1,0 +1,11 @@
+imageName: 'base'
+baseImage: 'quay.io/centos-bootc/centos-bootc:stream9'
+included:
+  - name: 'tailscale'
+    versionCmd: |
+      curl -Ls "https://api.github.com/repos/tailscale/tailscale/releases/latest" | jq -r '.tag_name'
+  - name: 'restic'
+    versionCmd: |
+      curl -Ls "https://api.github.com/repos/restic/restic/releases/latest" | jq -r ".tag_name"
+  - name: 'gotop'
+    version: 'v4.2.0'

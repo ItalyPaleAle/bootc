@@ -2,7 +2,7 @@
 ARG BASE_IMAGE=quay.io/centos-bootc/centos-bootc:stream9
 
 # Using https://openzfs.github.io/openzfs-docs/Developer%20Resources/Custom%20Packages.html
-FROM quay.io/centos-bootc/centos-bootc:stream9 AS builder
+FROM ${BASE_IMAGE} AS builder
 
 # We can't use `uname -r` as it will pick up the host kernel version
 RUN \
@@ -27,7 +27,8 @@ RUN <<EOT
   # Fetch latest version
   # Uses project_id from: https://release-monitoring.org/project/11706/
   curl "https://release-monitoring.org/api/v2/versions/?project_id=11706" \
-    | jq --raw-output '.stable_versions[0]' | tee /zfs_version.txt
+    | jq -r '.stable_versions[0]' \
+    | tee /zfs_version.txt
 
   curl -L -O https://github.com/openzfs/zfs/releases/download/zfs-$(cat /zfs_version.txt)/zfs-$(cat /zfs_version.txt).tar.gz
   tar xzf zfs-$(cat /zfs_version.txt).tar.gz
