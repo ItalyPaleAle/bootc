@@ -6,6 +6,7 @@ on:
     - cron: '42 16 * * 1,5'
   push:
     branches: [ "main" ]
+  workflow_dispatch:
 
 env:
   # Docker registry
