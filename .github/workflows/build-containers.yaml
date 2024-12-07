@@ -203,26 +203,37 @@ jobs:
       #    cache-from: type=gha
       #    cache-to: type=gha,mode=max
 
-      # Sign the resulting Docker images digests.
-      # This will only write to the public Rekor transparency log when the Docker repository is public to avoid leaking data. 
-      # https://github.com/sigstore/cosign
-      - name: Sign the published Docker images
-        env:
-          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
-          TAGS_BASE: ${{ steps.meta-base.outputs.tags }}
-          TAGS_TAILSCALE: ${{ steps.meta-tailscale.outputs.tags }}
-          TAGS_ZFS: ${{ steps.meta-zfs.outputs.tags }}
-          #TAGS_MONITORING: ${{ steps.meta-monitoring.outputs.tags }}
-          #TAGS_MONITORING_ZFS: ${{ steps.meta-monitoring-zfs.outputs.tags }}
-          DIGEST_BASE: ${{ steps.build-and-push-base.outputs.digest }}
-          DIGEST_TAILSCALE: ${{ steps.build-and-push-tailscale.outputs.digest }}
-          DIGEST_ZFS: ${{ steps.build-and-push-zfs.outputs.digest }}
-          #DIGEST_MONITORING: ${{ steps.build-and-push-monitoring.outputs.digest }}
-          #DIGEST_MONITORING_ZFS: ${{ steps.build-and-push-monitoring-zfs.outputs.digest }}
-        # This step uses the identity token to provision an ephemeral certificate against the sigstore community Fulcio instance.
-        run: |
-          echo "${TAGS_BASE}" | xargs -I {} cosign sign --yes {}@${DIGEST_BASE}
-          echo "${TAGS_TAILSCALE}" | xargs -I {} cosign sign --yes {}@${DIGEST_TAILSCALE}
-          echo "${TAGS_ZFS}" | xargs -I {} cosign sign --yes {}@${DIGEST_ZFS}
-          #echo "${TAGS_MONITORING}" | xargs -I {} cosign sign --yes {}@${DIGEST_MONITORING}
-          #echo "${TAGS_MONITORING_ZFS}" | xargs -I {} cosign sign --yes {}@${DIGEST_MONITORING_ZFS}
+      - name: 'Container image attestation: base'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/base'
+          subject-digest: ${{ steps.build-and-push-base.outputs.digest }}
+          push-to-registry: true
+
+      - name: 'Container image attestation: tailscale'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/tailscale'
+          subject-digest: ${{ steps.build-and-push-tailscale.outputs.digest }}
+          push-to-registry: true
+
+      - name: 'Container image attestation: zfs'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/zfs'
+          subject-digest: ${{ steps.build-and-push-zfs.outputs.digest }}
+          push-to-registry: true
+
+      #- name: 'Container image attestation: monitoring'
+      #  uses: actions/attest-build-provenance@v1
+      #  with:
+      #    subject-name: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/monitoring'
+      #    subject-digest: ${{ steps.build-and-push-monitoring.outputs.digest }}
+      #    push-to-registry: true
+
+      #- name: 'Container image attestation: monitoring-zfs'
+      #  uses: actions/attest-build-provenance@v1
+      #  with:
+      #    subject-name: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/monitoring-zfs'
+      #    subject-digest: ${{ steps.build-and-push-monitoring-zfs.outputs.digest }}
+      #    push-to-registry: true
