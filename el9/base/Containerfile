@@ -28,12 +28,11 @@ RUN <<EOT
     x86_64) ARCH="amd64" ;;
     aarch64) ARCH="arm64" ;;
   esac
-  # Remove leading v from the version
-  DOWNLOAD_URL_RESTIC=$(curl -sL https://api.github.com/repos/restic/restic/releases/latest | jq -r ".assets[] | select(.name == \"restic_v${VERSION_RESTIC}_linux_${ARCH}.bz2\") | .browser_download_url")
+
   # Download the binary
-  curl -sLO "$DOWNLOAD_URL_RESTIC"
+  curl -sLO "https://github.com/restic/restic/releases/download/v${VERSION_RESTIC}/restic_${VERSION_RESTIC}_linux_${ARCH}.bz2"
   echo "${CHECKSUMS_RESTIC}" | sha256sum --check --ignore-missing --status
-  bunzip2 -c "restic_v${VERSION_RESTIC}_linux_${ARCH}.bz2" > /usr/local/bin/restic
+  bunzip2 -c "restic_${VERSION_RESTIC}_linux_${ARCH}.bz2" > /usr/local/bin/restic
   chmod +x /usr/local/bin/restic
   /usr/local/bin/restic version
 
