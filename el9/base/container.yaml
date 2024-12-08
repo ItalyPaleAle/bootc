@@ -1,5 +1,5 @@
 imageName: 'base'
-baseImage: 'centos-stream'
+baseImage: 'tailscale' # ../tailscale
 apps:
   - 'tailscale'
   - 'restic'

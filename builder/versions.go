@@ -29,9 +29,10 @@ type Versions struct {
 }
 
 type Versions_BaseImage struct {
-	Image  string `yaml:"image"`
-	Tag    string `yaml:"tag"`
-	Digest string `yaml:"digest"`
+	LocalImage string `yaml:"localImage"`
+	Image      string `yaml:"image"`
+	Tag        string `yaml:"tag"`
+	Digest     string `yaml:"digest"`
 }
 
 type Versions_App struct {

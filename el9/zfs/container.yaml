@@ -1,4 +1,4 @@
 imageName: 'zfs'
-baseImage: 'centos-stream'
+baseImage: 'base' # ../base
 apps:
   - 'zfs'

@@ -90,9 +90,7 @@ func ProcessContainer(basePath string, versions *Versions) error {
 
 	// Build the container
 	// Creates a manifest with a temporary tag
-	tag := time.Now().Format("20060102150405")
-	manifestName := path.Join(flags.Repository, containerConfig.ImageName)
-	manifestNameTag := manifestName + ":" + tag
+	manifestNameTag := buildImageName(containerConfig.ImageName, time.Now().Format("20060102150405"))
 
 	fmt.Fprintf(os.Stderr, "Building image: %s\n", manifestNameTag)
 
@@ -109,7 +107,7 @@ func ProcessContainer(basePath string, versions *Versions) error {
 	// Push if desired
 	if flags.Push {
 		for _, tag := range flags.Tags {
-			push := manifestName + ":" + tag
+			push := buildImageName(containerConfig.ImageName, tag)
 
 			fmt.Fprintf(os.Stderr, "Pushing: %s\n", push)
 
@@ -127,11 +125,22 @@ func ProcessContainer(basePath string, versions *Versions) error {
 	return nil
 }
 
+func buildImageName(imageName string, tag string) string {
+	return path.Join(flags.Repository, imageName) + ":" + tag
+}
+
 func getBuildArgs(containerConfig *ContainerConfig, versions *Versions, manifestNameTag string) ([]string, error) {
 	// Base image
-	baseImage, ok := versions.BaseImages[containerConfig.BaseImage]
+	baseImageObj, ok := versions.BaseImages[containerConfig.BaseImage]
 	if !ok {
 		return nil, fmt.Errorf("base image '%s' is not defined in versions file", containerConfig.BaseImage)
+	}
+
+	var baseImage string
+	if baseImageObj.LocalImage != "" {
+		baseImage = buildImageName(baseImageObj.LocalImage, "latest")
+	} else {
+		baseImage = baseImageObj.Image + "@sha256:" + baseImageObj.Digest
 	}
 
 	// List of platforms
@@ -146,8 +155,8 @@ func getBuildArgs(containerConfig *ContainerConfig, versions *Versions, manifest
 		"--manifest", manifestNameTag,
 		"--platform", strings.Join(platforms, ","),
 		"--file", containerConfig.Containerfile,
-		"--pull=always",
-		"--build-arg", fmt.Sprintf("BASE_IMAGE=%s@sha256:%s", baseImage.Image, baseImage.Digest),
+		"--pull=missing",
+		"--build-arg", "BASE_IMAGE=" + baseImage,
 	}
 
 	// Add build args
