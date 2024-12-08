@@ -6,8 +6,21 @@ FROM ${BASE_IMAGE}
 ARG VERSION_TAILSCALE
 
 # Add tailscaled
-RUN \
-  dnf config-manager --add-repo https://pkgs.tailscale.com/stable/centos/9/tailscale.repo && \
-  dnf install -y tailscale-${VERSION_TAILSCALE} && \
-  dnf clean all && \
+RUN <<EOT
+  set -euxo pipefail
+
+  # Get repo name for Tailscale
+  REPO=""
+  case $(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"') in
+    rhel) REPO="rhel/9" ;;
+    centos) REPO="centos/9" ;;
+    # Default to Fedora
+    *) REPO="fedora" ;;
+  esac
+
+  dnf config-manager --add-repo "https://pkgs.tailscale.com/stable/${REPO}/tailscale.repo"
+  dnf install -y tailscale-${VERSION_TAILSCALE}
+  dnf clean all
+
   systemctl enable tailscaled
+EOT

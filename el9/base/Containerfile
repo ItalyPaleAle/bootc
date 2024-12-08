@@ -36,11 +36,6 @@ RUN <<EOT
   chmod +x /usr/local/bin/restic
   /usr/local/bin/restic version
 
-  # Add Tailscale
-  dnf config-manager --add-repo https://pkgs.tailscale.com/stable/centos/9/tailscale.repo
-  dnf install -y tailscale-${VERSION_TAILSCALE}
-  systemctl enable tailscaled
-
   # Add gotop, fetching the RPM from the official GitHub repository
   # This is installed on x86_64 only as pre-compiled RPMs are not available for other archs from the project
   if [ "$(uname -m)" = "x86_64" ]; then
