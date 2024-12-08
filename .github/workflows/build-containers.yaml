@@ -65,7 +65,8 @@ jobs:
       - name: Compile tools app
         run: |
           mkdir -p ../.bin
-          go build . \
+          go build \
+            -v \
             -o ../.bin/tools
         working-directory: ./tools
 

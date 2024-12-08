@@ -1,6 +1,10 @@
 # Override files
 **/container.override.yaml
 
+# Output/compiled files
+.bin/
+.out/
+
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,macos,linux,windows
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,macos,linux,windows
 
