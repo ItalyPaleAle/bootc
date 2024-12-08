@@ -14,8 +14,10 @@ RUN <<EOT
   case $(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"') in
     rhel) REPO="rhel/9" ;;
     centos) REPO="centos/9" ;;
-    # Default to Fedora
-    *) REPO="fedora" ;;
+    # Alma Linux uses RHEL
+    almalinux) REPO="rhel/9" ;;
+    # Default to RHEL
+    *) REPO="rhel9" ;;
   esac
 
   dnf config-manager --add-repo "https://pkgs.tailscale.com/stable/${REPO}/tailscale.repo"
