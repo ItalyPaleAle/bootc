@@ -103,6 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           .bin/tools \
+            build \
             ./el9/tailscale \
             --versions-file versions.yaml \
             --arch amd64,arm64 \
@@ -121,6 +122,7 @@ jobs:
         run: |
           set -euo pipefail
           .bin/tools \
+            build \
             ./el9/base \
             --versions-file versions.yaml \
             --arch amd64,arm64 \
@@ -139,6 +141,7 @@ jobs:
         run: |
           set -euo pipefail
           .bin/tools \
+            build \
             ./el9/zfs \
             --versions-file versions.yaml \
             --arch amd64 \
