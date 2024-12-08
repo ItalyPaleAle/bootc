@@ -64,9 +64,10 @@ jobs:
       # Compile the tools app
       - name: Compile tools app
         run: |
-          mkdir -p .bin
-          go build ./tools \
-            -o .bin/tools
+          mkdir -p ../.bin
+          go build . \
+            -o ../.bin/tools
+        working-directory: ./tools
 
       # Build and push Docker image for tailscale
       # For linux/amd64 and linux/arm64
