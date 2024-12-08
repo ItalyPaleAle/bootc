@@ -103,13 +103,13 @@ func ProcessContainer(basePath string, versions *Versions) error {
 		return fmt.Errorf("failed to get build args: %w", err)
 	}
 
-	err = runProcess("podman", buildArgs, nil)
+	err = runProcess(flags.Platform, buildArgs, nil)
 	if err != nil {
 		return fmt.Errorf("failed to build container: %w", err)
 	}
 
 	// Tag as latest
-	err = runProcess("podman", []string{
+	err = runProcess(flags.Platform, []string{
 		"tag",
 		manifestNameTag,
 		buildImageNameTag(containerConfig.ImageName, "latest"),
@@ -118,18 +118,36 @@ func ProcessContainer(basePath string, versions *Versions) error {
 		return fmt.Errorf("failed to tag manifest: %w", err)
 	}
 
+	result.ImageName = buildImageName(containerConfig.ImageName)
+
 	// Get the digest of the image
 	digestOutput := &bytes.Buffer{}
-	err = runProcess("podman", []string{
-		"image", "inspect",
-		manifestNameTag,
-		"--format", "{{ .Digest }}",
-	}, digestOutput)
-	if err != nil {
-		return fmt.Errorf("failed to get image's digest: %w", err)
+	if flags.IsPodman() {
+		err = runProcess("podman", []string{
+			"image", "inspect",
+			manifestNameTag,
+			"--format", "{{ .Digest }}",
+		}, digestOutput)
+		if err != nil {
+			return fmt.Errorf("failed to get image's digest: %w", err)
+		}
+		result.Digest = strings.TrimSpace(digestOutput.String())
+	} else {
+		err = runProcess("docker", []string{
+			"inspect",
+			"--format", "{{index .RepoDigests 0}}",
+			manifestNameTag,
+		}, digestOutput)
+		if err != nil {
+			return fmt.Errorf("failed to get image's digest: %w", err)
+		}
+		// The result with docker starts with the image name, so we need to get the part after the @
+		_, digest, ok := strings.Cut(strings.TrimSpace(digestOutput.String()), "@")
+		if !ok {
+			return errors.New("failed to get image's digest: command output was in an unrecognized format")
+		}
+		result.Digest = digest
 	}
-	result.Digest = strings.TrimSpace(digestOutput.String())
-	result.ImageName = buildImageName(containerConfig.ImageName)
 
 	// Push if desired
 	if flags.Push {
@@ -138,13 +156,33 @@ func ProcessContainer(basePath string, versions *Versions) error {
 
 			fmt.Fprintf(os.Stderr, "Pushing: %s\n", push)
 
-			err = runProcess("podman", []string{
-				"push",
-				manifestNameTag,
-				push,
-			}, nil)
-			if err != nil {
-				return fmt.Errorf("failed to push manifest: %w", err)
+			// With Docker, we need to tag AND push
+			if flags.IsPodman() {
+				err = runProcess("podman", []string{
+					"push",
+					manifestNameTag,
+					push,
+				}, nil)
+				if err != nil {
+					return fmt.Errorf("failed to push manifest: %w", err)
+				}
+			} else {
+				err = runProcess("docker", []string{
+					"tag",
+					manifestNameTag,
+					push,
+				}, nil)
+				if err != nil {
+					return fmt.Errorf("failed to tag manifest: %w", err)
+				}
+
+				err = runProcess("docker", []string{
+					"push",
+					push,
+				}, nil)
+				if err != nil {
+					return fmt.Errorf("failed to push manifest: %w", err)
+				}
 			}
 
 			result.Tags = append(result.Tags, tag)
@@ -201,10 +239,16 @@ func getBuildArgs(containerConfig *ContainerConfig, versions *Versions, manifest
 	// Initial args
 	buildArgs := []string{
 		"build",
-		"--manifest", manifestNameTag,
 		"--platform", strings.Join(platforms, ","),
 		"--file", containerConfig.Containerfile,
 		"--build-arg", "BASE_IMAGE=" + baseImage,
+	}
+
+	// For Docker, we use "--tag", while for Podman it's "--manifest"
+	if flags.IsPodman() {
+		buildArgs = append(buildArgs, "--manifest", manifestNameTag)
+	} else {
+		buildArgs = append(buildArgs, "--tag", manifestNameTag)
 	}
 
 	// Add build args

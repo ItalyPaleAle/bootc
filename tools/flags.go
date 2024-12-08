@@ -10,6 +10,7 @@ import (
 
 type cmdFlags struct {
 	Push         bool
+	Platform     string
 	Repository   string
 	Tags         []string
 	Archs        []string
@@ -21,6 +22,7 @@ type cmdFlags struct {
 func (f *cmdFlags) Parse() {
 	// Set flags and configure them
 	pflag.BoolVarP(&f.Push, "push", "p", false, "Push the container image after being built")
+	pflag.StringVar(&f.Platform, "platform", "podman", "Container platform to use: 'podman' or 'docker'")
 	pflag.StringVarP(&f.Repository, "repository", "r", "localhost/bootc", "Base repository for tagging images")
 	pflag.StringSliceVarP(&f.Tags, "tag", "t", []string{"latest"}, "Tag(s) for the image, for pushing ('latest' is added automatically)")
 	pflag.StringSliceVarP(&f.Archs, "arch", "a", []string{"amd64"}, "Architecture(s) for building the image")
@@ -31,10 +33,19 @@ func (f *cmdFlags) Parse() {
 	// Parse flags
 	pflag.Parse()
 
-	// Ensure we have at least one positional argument containing the paths
+	// Positional argument contains the paths
 	f.Paths = pflag.Args()
+
+	// Validate required parameters
 	if len(f.Paths) < 1 || len(f.Archs) == 0 ||
 		f.Repository == "" || f.VersionsFile == "" {
+		pflag.Usage()
+		os.Exit(1)
+	}
+	switch f.Platform {
+	case "podman", "docker":
+		// All good
+	default:
 		pflag.Usage()
 		os.Exit(1)
 	}
@@ -42,6 +53,10 @@ func (f *cmdFlags) Parse() {
 	if !slices.Contains(f.Tags, "latest") {
 		f.Tags = append(f.Tags, "latest")
 	}
+}
+
+func (f cmdFlags) IsPodman() bool {
+	return f.Platform == "podman"
 }
 
 func (f cmdFlags) PrintUsage() {

@@ -89,6 +89,7 @@ jobs:
             --versions-file versions.yaml \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
+            --platform docker \
             --push \
             --tag "$(date +"%Y%m%d")" \
               | tee .out/tailscale.json
@@ -106,6 +107,7 @@ jobs:
             --versions-file versions.yaml \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
+            --platform docker \
             --push \
             --tag "$(date +"%Y%m%d")" \
               | tee .out/base.json
@@ -123,6 +125,7 @@ jobs:
             --versions-file versions.yaml \
             --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
+            --platform docker \
             --push \
             --tag "$(date +"%Y%m%d")" \
               | tee .out/zfs.json
