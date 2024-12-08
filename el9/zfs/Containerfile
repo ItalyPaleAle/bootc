@@ -4,38 +4,41 @@ ARG BASE_IMAGE=quay.io/centos-bootc/centos-bootc:stream9
 # Using https://openzfs.github.io/openzfs-docs/Developer%20Resources/Custom%20Packages.html
 FROM ${BASE_IMAGE} AS builder
 
-# We can't use `uname -r` as it will pick up the host kernel version
-RUN \
-  rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}' \
-    | tee /kernel-version.txt
+ARG VERSION_ZFS
+ARG CHECKSUMS_ZFS
 
 # Install build depdendencies
-RUN \
+RUN <<EOT
+  set -euxo pipefail
+
+  # Get the kernel version
+  # We can't use `uname -r` as it will pick up the host kernel version
+  VERSION_KERNEL=$(rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')
+
   dnf install -y \
     jq epel-release make autoconf automake gcc libtool rpm-build libblkid-devel \
     libuuid-devel libudev-devel openssl-devel zlib-devel libaio-devel libattr-devel elfutils-libelf-devel \
-    kernel-$(cat /kernel-version.txt) kernel-modules-$(cat /kernel-version.txt) kernel-devel-$(cat /kernel-version.txt) \
+    kernel-${VERSION_KERNEL} kernel-modules-${VERSION_KERNEL} kernel-devel-${VERSION_KERNEL} \
     python3 python3-devel python3-setuptools python3-packaging python3-cffi libffi-devel git libcurl-devel
+EOT
+
 RUN \
   dnf install -y --enablerepo=epel --enablerepo=crb \
     dkms libtirpc-devel ncompress
 
-WORKDIR /
 RUN <<EOT
   set -euxo pipefail
 
-  # Fetch latest version
-  # Uses project_id from: https://release-monitoring.org/project/11706/
-  curl "https://release-monitoring.org/api/v2/versions/?project_id=11706" \
-    | jq -r '.stable_versions[0]' \
-    | tee /zfs_version.txt
+  VERSION_KERNEL=$(rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')
 
-  curl -L -O https://github.com/openzfs/zfs/releases/download/zfs-$(cat /zfs_version.txt)/zfs-$(cat /zfs_version.txt).tar.gz
-  tar xzf zfs-$(cat /zfs_version.txt).tar.gz
-  mv zfs-$(cat /zfs_version.txt) zfs
+  curl -L -O https://github.com/openzfs/zfs/releases/download/zfs-${VERSION_ZFS}/zfs-${VERSION_ZFS}.tar.gz
+  echo "${CHECKSUMS_ZFS}" | sha256sum --check --status
+
+  tar xzf zfs-${VERSION_ZFS}.tar.gz
+  mv zfs-${VERSION_ZFS} zfs
 
   cd /zfs
-  ./configure -with-linux=/usr/src/kernels/$(cat /kernel-version.txt)/ -with-linux-obj=/usr/src/kernels/$(cat /kernel-version.txt)/
+  ./configure -with-linux=/usr/src/kernels/${VERSION_KERNEL}/ -with-linux-obj=/usr/src/kernels/${VERSION_KERNEL}/
   make -j1 rpm-utils rpm-kmod
   ls -al /zfs/*.rpm
 EOT

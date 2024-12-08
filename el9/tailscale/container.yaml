@@ -1,6 +1,4 @@
 imageName: 'tailscale'
-baseImage: quay.io/centos-bootc/centos-bootc:stream9
-included:
-  - name: tailscale
-    version: |
-      curl -Ls "https://api.github.com/repos/tailscale/tailscale/releases/latest" | jq -r '.tag_name'
+baseImage: 'centos-stream'
+apps:
+  - 'tailscale'

@@ -1,6 +1,4 @@
-imageName: 'tailscale'
-baseImage: quay.io/centos-bootc/centos-bootc:stream9
-included:
-  - name: zfs
-    version: |
-      curl "https://release-monitoring.org/api/v2/versions/?project_id=11706" | jq -r '.stable_versions[0]'
+imageName: 'zfs'
+baseImage: 'centos-stream'
+apps:
+  - 'zfs'

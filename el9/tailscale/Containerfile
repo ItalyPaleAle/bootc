@@ -3,9 +3,11 @@ ARG BASE_IMAGE=quay.io/centos-bootc/centos-bootc:stream9
 
 FROM ${BASE_IMAGE}
 
+ARG VERSION_TAILSCALE
+
 # Add tailscaled
 RUN \
   dnf config-manager --add-repo https://pkgs.tailscale.com/stable/centos/9/tailscale.repo && \
-  dnf install -y tailscale && \
+  dnf install -y tailscale-${VERSION_TAILSCALE} && \
   dnf clean all && \
   systemctl enable tailscaled
