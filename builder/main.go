@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -55,6 +57,8 @@ func ProcessContainer(basePath string, versions *Versions) error {
 		return fmt.Errorf("failed to get container path: %w", err)
 	}
 
+	result := buildResult{}
+
 	fmt.Fprintf(os.Stderr, "Building container: %s\n", basePath)
 
 	containerConfigFile, err := os.Open(filepath.Join(basePath, "container.yaml"))
@@ -90,7 +94,7 @@ func ProcessContainer(basePath string, versions *Versions) error {
 
 	// Build the container
 	// Creates a manifest with a temporary tag
-	manifestNameTag := buildImageName(containerConfig.ImageName, time.Now().Format("20060102150405"))
+	manifestNameTag := buildImageNameTag(containerConfig.ImageName, time.Now().Format("20060102150405"))
 
 	fmt.Fprintf(os.Stderr, "Building image: %s\n", manifestNameTag)
 
@@ -108,16 +112,29 @@ func ProcessContainer(basePath string, versions *Versions) error {
 	err = runProcess("podman", []string{
 		"tag",
 		manifestNameTag,
-		buildImageName(containerConfig.ImageName, "latest"),
+		buildImageNameTag(containerConfig.ImageName, "latest"),
 	}, nil)
 	if err != nil {
 		return fmt.Errorf("failed to tag manifest: %w", err)
 	}
 
+	// Get the digest of the image
+	digestOutput := &bytes.Buffer{}
+	err = runProcess("podman", []string{
+		"image", "inspect",
+		manifestNameTag,
+		"--format", "{{ .Digest }}",
+	}, digestOutput)
+	if err != nil {
+		return fmt.Errorf("failed to get image's digest: %w", err)
+	}
+	result.Digest = strings.TrimSpace(digestOutput.String())
+	result.ImageName = buildImageName(containerConfig.ImageName)
+
 	// Push if desired
 	if flags.Push {
 		for _, tag := range flags.Tags {
-			push := buildImageName(containerConfig.ImageName, tag)
+			push := buildImageNameTag(containerConfig.ImageName, tag)
 
 			fmt.Fprintf(os.Stderr, "Pushing: %s\n", push)
 
@@ -129,14 +146,36 @@ func ProcessContainer(basePath string, versions *Versions) error {
 			if err != nil {
 				return fmt.Errorf("failed to push manifest: %w", err)
 			}
+
+			result.Tags = append(result.Tags, tag)
+			result.Pushed = append(result.Pushed, push)
 		}
 	}
+
+	// Print the result
+	fmt.Println(result)
 
 	return nil
 }
 
-func buildImageName(imageName string, tag string) string {
-	return path.Join(flags.Repository, imageName) + ":" + tag
+type buildResult struct {
+	Digest    string   `json:"digest,omitempty"`
+	ImageName string   `json:"imageName,omitempty"`
+	Tags      []string `json:"tags,omitempty"`
+	Pushed    []string `json:"pushed,omitempty"`
+}
+
+func (r buildResult) String() string {
+	j, _ := json.MarshalIndent(r, "", "  ")
+	return string(j)
+}
+
+func buildImageNameTag(imageName string, tag string) string {
+	return buildImageName(imageName) + ":" + tag
+}
+
+func buildImageName(imageName string) string {
+	return path.Join(flags.Repository, imageName)
 }
 
 func getBuildArgs(containerConfig *ContainerConfig, versions *Versions, manifestNameTag string) ([]string, error) {
@@ -148,7 +187,7 @@ func getBuildArgs(containerConfig *ContainerConfig, versions *Versions, manifest
 
 	var baseImage string
 	if baseImageObj.LocalImage != "" {
-		baseImage = buildImageName(baseImageObj.LocalImage, "latest")
+		baseImage = buildImageNameTag(baseImageObj.LocalImage, "latest")
 	} else {
 		baseImage = baseImageObj.Image + "@sha256:" + baseImageObj.Digest
 	}
@@ -200,10 +239,11 @@ func getBuildArgs(containerConfig *ContainerConfig, versions *Versions, manifest
 func runProcess(name string, args []string, stdout io.Writer) error {
 	fmt.Fprintf(os.Stderr, "Executing: %s %s\n", name, strings.Join(args, " "))
 
+	// Redirect all output to stderr
 	if stdout == nil {
-		stdout = os.Stdout
+		stdout = os.Stderr
 	} else {
-		stdout = io.MultiWriter(os.Stdout, stdout)
+		stdout = io.MultiWriter(os.Stderr, stdout)
 	}
 
 	cmd := exec.Command(name, args...)
