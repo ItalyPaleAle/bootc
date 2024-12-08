@@ -104,6 +104,16 @@ func ProcessContainer(basePath string, versions *Versions) error {
 		return fmt.Errorf("failed to build container: %w", err)
 	}
 
+	// Tag as latest
+	err = runProcess("podman", []string{
+		"tag",
+		manifestNameTag,
+		buildImageName(containerConfig.ImageName, "latest"),
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("failed to tag manifest: %w", err)
+	}
+
 	// Push if desired
 	if flags.Push {
 		for _, tag := range flags.Tags {
