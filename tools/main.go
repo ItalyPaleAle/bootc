@@ -204,7 +204,6 @@ func getBuildArgs(containerConfig *ContainerConfig, versions *Versions, manifest
 		"--manifest", manifestNameTag,
 		"--platform", strings.Join(platforms, ","),
 		"--file", containerConfig.Containerfile,
-		"--pull=missing",
 		"--build-arg", "BASE_IMAGE=" + baseImage,
 	}
 

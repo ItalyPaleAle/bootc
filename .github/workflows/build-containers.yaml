@@ -64,7 +64,7 @@ jobs:
       # Compile the tools app
       - name: Compile tools app
         run: |
-          mkdir -p ../.bin
+          mkdir -p ../.bin ../.out
           go build \
             -v \
             -o ../.bin/tools
