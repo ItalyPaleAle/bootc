@@ -21,13 +21,17 @@ jobs:
     permissions:
       contents: read
       packages: write
-      # This is used to complete the identity challenge
-      # with sigstore/fulcio when running outside of PRs.
+      # Necessary for writing attestations
       id-token: write
+      attestations: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
 
       # Ensure that IMAGE_NAME_BASE is all lowercase
       - name: Lowercase IMAGE_NAME_BASE
@@ -48,11 +52,6 @@ jobs:
         with:
           platforms: "linux/amd64,linux/arm64"
 
-      # Set up BuildKit Docker container builder to be able to build multi-platform images and export cache
-      # https://github.com/docker/setup-buildx-action
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
-
       # Login against a Docker registry
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
@@ -62,168 +61,78 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Extract metadata for Docker image for base
-      # https://github.com/docker/metadata-action
-      - name: "Extract Docker metadata: base"
-        id: meta-base
-        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/base
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=schedule,pattern={{date 'YYYYMMDD'}}
-
-      # Extract metadata for Docker image for tailscale
-      # https://github.com/docker/metadata-action
-      - name: "Extract Docker metadata: tailscale"
-        id: meta-tailscale
-        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/tailscale
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=schedule,pattern={{date 'YYYYMMDD'}}
-
-      # Extract metadata for Docker image for zfs
-      # https://github.com/docker/metadata-action
-      - name: "Extract Docker metadata: zfs"
-        id: meta-zfs
-        uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/zfs
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=schedule,pattern={{date 'YYYYMMDD'}}
-
-      # Extract metadata for Docker image for monitoring
-      # https://github.com/docker/metadata-action
-      #- name: "Extract Docker metadata: monitoring"
-      #  id: meta-monitoring
-      #  uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
-      #  with:
-      #    images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/monitoring
-      #    tags: |
-      #      type=raw,value=latest,enable={{is_default_branch}}
-      #      type=schedule,pattern={{date 'YYYYMMDD'}}
-
-      # Extract metadata for Docker image for monitoring
-      # https://github.com/docker/metadata-action
-      #- name: "Extract Docker metadata: monitoring-zfs"
-      #  id: meta-monitoring-zfs
-      #  uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
-      #  with:
-      #    images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/monitoring-zfs
-      #    tags: |
-      #      type=raw,value=latest,enable={{is_default_branch}}
-      #      type=schedule,pattern={{date 'YYYYMMDD'}}
-
-      # Build and push Docker image for base
-      - name: "Build and push Docker image: base"
-        id: build-and-push-base
-        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
-        with:
-          context: ./el9/base
-          push: true
-          platforms: "linux/amd64,linux/arm64"
-          tags: ${{ steps.meta-base.outputs.tags }}
-          labels: ${{ steps.meta-base.outputs.labels }}
-          file: ./el9/base/Containerfile
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      # Compile "builder" app
+      - name: Compile builder app
+        run: |
+          mkdir -p .bin
+          go build ./builder \
+            -o .bin/builder
 
       # Build and push Docker image for tailscale
+      # For linux/amd64 and linux/arm64
       - name: "Build and push Docker image: tailscale"
         id: build-and-push-tailscale
-        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
-        with:
-          context: ./el9/tailscale
-          push: true
-          platforms: "linux/amd64,linux/arm64"
-          tags: ${{ steps.meta-tailscale.outputs.tags }}
-          labels: ${{ steps.meta-tailscale.outputs.labels }}
-          file: ./el9/tailscale/Containerfile
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        run: |
+          .bin/builder \
+            ./el9/tailscale \
+            --versions-file versions.yaml \
+            --arch amd64,arm64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/tailscale.json
+          echo "ImageName=$(jq -r '.imageName' .out/tailscale.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/tailscale.json)" >> "$GITHUB_OUTPUT"
 
-      # Build and push Docker image for monitoring
-      #- name: "Build and push Docker image: monitoring"
-      #  id: build-and-push-monitoring
-      #  uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
-      #  with:
-      #    context: ./el9/monitoring
-      #    push: true
-      #    build-args: |
-      #      BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/base:latest
-      #    platforms: "linux/amd64"
-      #    tags: ${{ steps.meta-monitoring.outputs.tags }}
-      #    labels: ${{ steps.meta-monitoring.outputs.labels }}
-      #    file: ./el9/monitoring/Containerfile
-      #    cache-from: type=gha
-      #    cache-to: type=gha,mode=max
+      # Build and push Docker image for base
+      # For linux/amd64 and linux/arm64
+      - name: "Build and push Docker image: base"
+        id: build-and-push-base
+        run: |
+          .bin/builder \
+            ./el9/base \
+            --versions-file versions.yaml \
+            --arch amd64,arm64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/base.json
+          echo "ImageName=$(jq -r '.imageName' .out/base.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/base.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push Docker image for zfs
+      # For linux/amd64
       - name: "Build and push Docker image: zfs"
         id: build-and-push-zfs
-        uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
-        with:
-          context: ./el9/zfs
-          push: true
-          build-args: |
-            BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/base:latest
-          platforms: "linux/amd64"
-          tags: ${{ steps.meta-zfs.outputs.tags }}
-          labels: ${{ steps.meta-zfs.outputs.labels }}
-          file: ./el9/zfs/Containerfile
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # Build and push Docker image for monitoring-zfs
-      #- name: "Build and push Docker image: monitoring-zfs"
-      #  id: build-and-push-monitoring-zfs
-      #  uses: docker/build-push-action@48aba3b46d1b1fec4febb7c5d0c644b249a11355 # v6.10.0
-      #  with:
-      #    context: ./el9/monitoring
-      #    push: true
-      #    build-args: |
-      #      BASE_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/zfs:latest
-      #    platforms: "linux/amd64"
-      #    tags: ${{ steps.meta-monitoring-zfs.outputs.tags }}
-      #    labels: ${{ steps.meta-monitoring-zfs.outputs.labels }}
-      #    file: ./el9/monitoring/Containerfile
-      #    cache-from: type=gha
-      #    cache-to: type=gha,mode=max
-
-      - name: 'Container image attestation: base'
-        uses: actions/attest-build-provenance@v1
-        with:
-          subject-name: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/base'
-          subject-digest: ${{ steps.build-and-push-base.outputs.digest }}
-          push-to-registry: true
+        run: |
+          .bin/builder \
+            ./el9/zfs \
+            --versions-file versions.yaml \
+            --arch amd64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/zfs.json
+          echo "ImageName=$(jq -r '.imageName' .out/zfs.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/zfs.json)" >> "$GITHUB_OUTPUT"
 
       - name: 'Container image attestation: tailscale'
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/tailscale'
-          subject-digest: ${{ steps.build-and-push-tailscale.outputs.digest }}
+          subject-name: ${{ steps.build-and-push-tailscale.outputs.ImageName }}
+          subject-digest: ${{ steps.build-and-push-tailscale.outputs.Digest }}
+          push-to-registry: true
+
+      - name: 'Container image attestation: base'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.build-and-push-base.outputs.ImageName }}
+          subject-digest: ${{ steps.build-and-push-base.outputs.Digest }}
           push-to-registry: true
 
       - name: 'Container image attestation: zfs'
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/zfs'
-          subject-digest: ${{ steps.build-and-push-zfs.outputs.digest }}
+          subject-name: ${{ steps.build-and-push-zfs.outputs.ImageName }}
+          subject-digest: ${{ steps.build-and-push-zfs.outputs.Digest }}
           push-to-registry: true
-
-      #- name: 'Container image attestation: monitoring'
-      #  uses: actions/attest-build-provenance@v1
-      #  with:
-      #    subject-name: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/monitoring'
-      #    subject-digest: ${{ steps.build-and-push-monitoring.outputs.digest }}
-      #    push-to-registry: true
-
-      #- name: 'Container image attestation: monitoring-zfs'
-      #  uses: actions/attest-build-provenance@v1
-      #  with:
-      #    subject-name: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/monitoring-zfs'
-      #    subject-digest: ${{ steps.build-and-push-monitoring-zfs.outputs.digest }}
-      #    push-to-registry: true
