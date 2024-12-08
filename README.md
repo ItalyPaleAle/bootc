@@ -14,10 +14,6 @@ These images are built using GitHub Actions every Monday and Friday, from the up
 
 Images are published on GitHub Packages and available for linux/amd64 and linux/arm64 (except ZFS).
 
-## Use with RHEL
-
-The Containerfiles are compatible with RHEL too, currently supporting RHEL 9. The RHEL-based images are not published from this repo automatically.
-
 ## `tailscale` image
 
 Includes:
@@ -97,3 +93,15 @@ ghcr.io/italypaleale/bootc/centos9/monitoring-zfs:latest
 
 [Containerfile](./el9/monitoring/Containerfile)
 -->
+
+## Build
+
+> TODO
+
+## Use with RHEL
+
+The Containerfiles are compatible with RHEL too, currently supporting RHEL 9. Due to licensing reasons, the RHEL-based images are not published from this repo automatically.
+
+To build images based on RHEL locally:
+
+> TODO
