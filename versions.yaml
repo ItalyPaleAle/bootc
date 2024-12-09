@@ -1,7 +1,7 @@
 baseImages:
   base:
     localImage: base
-  centos-stream:
+  centos-stream-9:
     image: quay.io/centos-bootc/centos-bootc
     tag: stream9
     digest: sha256:2c164c94b1e8eb4188b3fc1128a2d7c8c0ffcabf7d2ca64d4f5fc0a201d70023
