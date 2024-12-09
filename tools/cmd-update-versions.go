@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -28,7 +29,13 @@ func init() {
 				return err
 			}
 
+			flags.VersionsFile, err = filepath.Abs(flags.VersionsFile)
+			if err != nil {
+				return fmt.Errorf("failed to get path to versions file: %w", err)
+			}
+
 			// Load the version file
+			fmt.Fprintf(os.Stderr, "Loading versions file: %s\n", flags.VersionsFile)
 			versions, err := LoadVersions(flags.VersionsFile)
 			if err != nil {
 				return fmt.Errorf("failed to load versions file: %w", err)
@@ -80,10 +87,40 @@ func init() {
 				version := strings.TrimSpace(out.String())
 				fmt.Fprintf(os.Stderr, "  Latest version: %s\n", version)
 
-				if version != app.Version {
-					app.Version = version
-					updated = append(updated, fmt.Sprintf("App %s: %s", appId, version))
+				if version == app.Version {
+					// Do not fetch updated checksums if the version hasn't changed
+					continue
 				}
+
+				app.Version = version
+				updated = append(updated, fmt.Sprintf("App %s: %s", appId, version))
+
+				// Fetch the updated checksum if needed
+				if app.Cmds.UpdateChecksums == "" {
+					continue
+				}
+
+				out.Reset()
+				err = runShellScript(app.Cmds.UpdateChecksums, out, true)
+				if err != nil {
+					return fmt.Errorf("failed to get updated checksum for app '%s': %w", appId, err)
+				}
+				checksum := strings.TrimSpace(out.String())
+
+				app.Checksums = checksum
+				fmt.Fprint(os.Stderr, "  Updated checksum\n")
+			}
+
+			// Save the updated versions file if there have been changes
+			if len(updated) == 0 {
+				fmt.Fprint(os.Stderr, "No changes detected\n")
+				return nil
+			}
+
+			fmt.Fprintf(os.Stderr, "Saving updated versions file: %s\n", flags.VersionsFile)
+			err = versions.Save(flags.VersionsFile)
+			if err != nil {
+				return fmt.Errorf("failed to save updated versions file: %w", err)
 			}
 
 			return nil

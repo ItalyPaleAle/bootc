@@ -24,15 +24,32 @@ func LoadVersions(fileName string) (*Versions, error) {
 }
 
 type Versions struct {
-	BaseImages map[string]*Versions_BaseImage `yaml:"baseImages"`
-	Apps       map[string]*Versions_App       `yaml:"apps"`
+	BaseImages map[string]*Versions_BaseImage `yaml:"baseImages,omitempty"`
+	Apps       map[string]*Versions_App       `yaml:"apps,omitempty"`
+}
+
+func (v *Versions) Save(fileName string) error {
+	f, err := os.Create(fileName)
+	if err != nil {
+		return fmt.Errorf("error opening file for writing: %w", err)
+	}
+	defer f.Close()
+
+	enc := yaml.NewEncoder(f)
+	enc.SetIndent(2)
+	err = enc.Encode(v)
+	if err != nil {
+		return fmt.Errorf("error writing to file: %w", err)
+	}
+
+	return nil
 }
 
 type Versions_BaseImage struct {
-	LocalImage string `yaml:"localImage"`
-	Image      string `yaml:"image"`
-	Tag        string `yaml:"tag"`
-	Digest     string `yaml:"digest"`
+	LocalImage string `yaml:"localImage,omitempty"`
+	Image      string `yaml:"image,omitempty"`
+	Tag        string `yaml:"tag,omitempty"`
+	Digest     string `yaml:"digest,omitempty"`
 }
 
 type Versions_App struct {
