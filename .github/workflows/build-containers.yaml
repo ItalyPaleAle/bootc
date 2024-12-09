@@ -1,9 +1,6 @@
 name: "Build Containers"
 
 on:
-  schedule:
-    # https://crontab.guru/#42_16_*_*_1,5
-    - cron: '42 16 * * 1,5'
   push:
     branches: [ "main" ]
   workflow_dispatch:
@@ -88,9 +85,6 @@ jobs:
           # Create required folders
           mkdir -p .bin .out
 
-          # Print podman version
-          podman version
-
       # Compile the tools app
       - name: Compile tools app
         run: |
@@ -148,7 +142,7 @@ jobs:
           .bin/tools \
             build \
             ./el9/monitoring \
-            --default-monitoring-image "$DEFAULT_BASE_IMAGE" \
+            --default-base-image "$DEFAULT_BASE_IMAGE" \
             --versions-file versions.yaml \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
