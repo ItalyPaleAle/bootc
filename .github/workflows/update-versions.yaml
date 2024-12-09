@@ -34,12 +34,18 @@ jobs:
       - name: "Run the update-versions tool"
         id: update-versions
         run: |
+          set -euo pipefail
+
+          mkdir -p .out
+
           .bin/tools \
             update-versions \
-            --versions-file versions.yaml
+            --versions-file versions.yaml \
+              | tee .out/updated.md
 
           if git diff; then
             echo "changed=1" >> "$GITHUB_OUTPUT"
+            echo "hash=$(sha256sum .out/updated.md | head -c 8)" >> "$GITHUB_OUTPUT"
           else
             echo "changed=0" >> "$GITHUB_OUTPUT"
           fi
@@ -52,8 +58,9 @@ jobs:
           commit-message: 'Update versions file'
           committer: 'github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>'
           author: '${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>'
-          branch: 'update-versions'
-          branch-suffix: 'timestamp'
+          branch: 'update-versions/${{ steps.update-versions.outputs.hash }}'
+          sign-commits: true
           title: 'Update versions'
+          body-path: '.out/updated.md'
           labels: |
             automated pr

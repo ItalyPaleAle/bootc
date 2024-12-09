@@ -123,6 +123,11 @@ func init() {
 				return fmt.Errorf("failed to save updated versions file: %w", err)
 			}
 
+			// Print list of updates as markdown
+			for _, u := range updated {
+				fmt.Println("- " + u + "\n")
+			}
+
 			return nil
 		},
 	}
