@@ -5,14 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"slices"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -166,17 +163,23 @@ func ProcessContainer(flags *buildFlags, basePath string, versions *Versions) er
 		return fmt.Errorf("failed to get build args: %w", err)
 	}
 
-	err = runProcess(flags.Platform, buildArgs, nil)
+	err = runProcess(runProcessOpts{
+		Name: flags.Platform,
+		Args: buildArgs,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to build container: %w", err)
 	}
 
 	// Tag as latest
-	err = runProcess(flags.Platform, []string{
-		"tag",
-		manifestNameTag,
-		flags.buildImageNameTag(containerConfig.ImageName, "latest"),
-	}, nil)
+	err = runProcess(runProcessOpts{
+		Name: flags.Platform,
+		Args: []string{
+			"tag",
+			manifestNameTag,
+			flags.buildImageNameTag(containerConfig.ImageName, "latest"),
+		},
+	})
 	if err != nil {
 		return fmt.Errorf("failed to tag manifest: %w", err)
 	}
@@ -186,21 +189,29 @@ func ProcessContainer(flags *buildFlags, basePath string, versions *Versions) er
 	// Get the digest of the image
 	digestOutput := &bytes.Buffer{}
 	if flags.IsPodman() {
-		err = runProcess("podman", []string{
-			"image", "inspect",
-			manifestNameTag,
-			"--format", "{{ .Digest }}",
-		}, digestOutput)
+		err = runProcess(runProcessOpts{
+			Name: "podman",
+			Args: []string{
+				"image", "inspect",
+				manifestNameTag,
+				"--format", "{{ .Digest }}",
+			},
+			Stdout: digestOutput,
+		})
 		if err != nil {
 			return fmt.Errorf("failed to get image's digest: %w", err)
 		}
 		result.Digest = strings.TrimSpace(digestOutput.String())
 	} else {
-		err = runProcess("docker", []string{
-			"inspect",
-			"--format", "{{index .RepoDigests 0}}",
-			manifestNameTag,
-		}, digestOutput)
+		err = runProcess(runProcessOpts{
+			Name: "docker",
+			Args: []string{
+				"inspect",
+				"--format", "{{index .RepoDigests 0}}",
+				manifestNameTag,
+			},
+			Stdout: digestOutput,
+		})
 		if err != nil {
 			return fmt.Errorf("failed to get image's digest: %w", err)
 		}
@@ -221,28 +232,37 @@ func ProcessContainer(flags *buildFlags, basePath string, versions *Versions) er
 
 			// With Docker, we need to tag AND push
 			if flags.IsPodman() {
-				err = runProcess("podman", []string{
-					"push",
-					manifestNameTag,
-					push,
-				}, nil)
+				err = runProcess(runProcessOpts{
+					Name: "podman",
+					Args: []string{
+						"push",
+						manifestNameTag,
+						push,
+					},
+				})
 				if err != nil {
 					return fmt.Errorf("failed to push manifest: %w", err)
 				}
 			} else {
-				err = runProcess("docker", []string{
-					"tag",
-					manifestNameTag,
-					push,
-				}, nil)
+				err = runProcess(runProcessOpts{
+					Name: "docker",
+					Args: []string{
+						"tag",
+						manifestNameTag,
+						push,
+					},
+				})
 				if err != nil {
 					return fmt.Errorf("failed to tag manifest: %w", err)
 				}
 
-				err = runProcess("docker", []string{
-					"push",
-					push,
-				}, nil)
+				err = runProcess(runProcessOpts{
+					Name: "docker",
+					Args: []string{
+						"push",
+						push,
+					},
+				})
 				if err != nil {
 					return fmt.Errorf("failed to push manifest: %w", err)
 				}
@@ -282,7 +302,7 @@ func getBuildArgs(flags *buildFlags, containerConfig *ContainerConfig, versions 
 	if baseImageObj.LocalImage != "" {
 		baseImage = flags.buildImageNameTag(baseImageObj.LocalImage, "latest")
 	} else {
-		baseImage = baseImageObj.Image + "@sha256:" + baseImageObj.Digest
+		baseImage = baseImageObj.Image + "@" + baseImageObj.Digest
 	}
 
 	// List of platforms
@@ -332,24 +352,4 @@ func getBuildArgs(flags *buildFlags, containerConfig *ContainerConfig, versions 
 	buildArgs = append(buildArgs, containerConfig.BuildContext)
 
 	return buildArgs, nil
-}
-
-func runProcess(name string, args []string, stdout io.Writer) error {
-	fmt.Fprintf(os.Stderr, "Executing: %s %s\n", name, strings.Join(args, " "))
-
-	// Redirect all output to stderr
-	if stdout == nil {
-		stdout = os.Stderr
-	} else {
-		stdout = io.MultiWriter(os.Stderr, stdout)
-	}
-
-	cmd := exec.Command(name, args...)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = stdout
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setpgid: true,
-	}
-
-	return cmd.Run()
 }

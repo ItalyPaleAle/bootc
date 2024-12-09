@@ -24,8 +24,8 @@ func LoadVersions(fileName string) (*Versions, error) {
 }
 
 type Versions struct {
-	BaseImages map[string]Versions_BaseImage `yaml:"baseImages"`
-	Apps       map[string]Versions_App       `yaml:"apps"`
+	BaseImages map[string]*Versions_BaseImage `yaml:"baseImages"`
+	Apps       map[string]*Versions_App       `yaml:"apps"`
 }
 
 type Versions_BaseImage struct {
