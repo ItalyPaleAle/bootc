@@ -36,7 +36,7 @@ func init() {
 
 			// Load the version file
 			fmt.Fprintf(os.Stderr, "Loading versions file: %s\n", flags.VersionsFile)
-			versions, err := LoadVersions(flags.VersionsFile)
+			versions, err := LoadVersions([]string{flags.VersionsFile})
 			if err != nil {
 				return fmt.Errorf("failed to load versions file: %w", err)
 			}

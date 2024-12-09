@@ -7,17 +7,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func LoadVersions(fileName string) (*Versions, error) {
-	f, err := os.Open(fileName)
-	if err != nil {
-		return nil, fmt.Errorf("error opening file: %w", err)
-	}
-	defer f.Close()
-
+func LoadVersions(fileNames []string) (*Versions, error) {
 	versions := &Versions{}
-	err = yaml.NewDecoder(f).Decode(versions)
-	if err != nil {
-		return nil, fmt.Errorf("error reading file: %w", err)
+
+	for _, fileName := range fileNames {
+		f, err := os.Open(fileName)
+		if err != nil {
+			return nil, fmt.Errorf("error opening file: %w", err)
+		}
+		defer f.Close()
+
+		err = yaml.NewDecoder(f).Decode(versions)
+		if err != nil {
+			return nil, fmt.Errorf("error reading file: %w", err)
+		}
 	}
 
 	return versions, nil

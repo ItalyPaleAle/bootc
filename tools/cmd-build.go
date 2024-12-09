@@ -32,7 +32,7 @@ func init() {
 			flags.Paths = args
 
 			// Load the version file
-			versions, err := LoadVersions(flags.VersionsFile)
+			versions, err := LoadVersions(flags.VersionsFiles)
 			if err != nil {
 				return fmt.Errorf("failed to load versions file: %w", err)
 			}
@@ -55,7 +55,7 @@ func init() {
 	buildCmd.Flags().StringVarP(&flags.DefaultBaseImage, "default-base-image", "b", "", "Name of the default base image to use, from the versions file")
 	buildCmd.Flags().StringSliceVarP(&flags.Tags, "tag", "t", []string{"latest"}, "Tag(s) for the image, for pushing ('latest' is added automatically)")
 	buildCmd.Flags().StringSliceVarP(&flags.Archs, "arch", "a", []string{"amd64"}, "Architecture(s) for building the image")
-	buildCmd.Flags().StringVarP(&flags.VersionsFile, "versions-file", "f", "versions.yaml", "Path to the versions.yaml file")
+	buildCmd.Flags().StringSliceVarP(&flags.VersionsFiles, "versions-file", "f", []string{"versions.yaml"}, "Path(s) to the versions.yaml file(s)")
 
 	rootCmd.AddCommand(buildCmd)
 }
@@ -67,7 +67,7 @@ type buildFlags struct {
 	Repository       string
 	Tags             []string
 	Archs            []string
-	VersionsFile     string
+	VersionsFiles    []string
 
 	Paths []string
 }
@@ -83,8 +83,8 @@ func (f *buildFlags) Validate() error {
 	if f.Repository == "" {
 		return errors.New("flag --repository must not be empty")
 	}
-	if f.VersionsFile == "" {
-		return errors.New("flag --versions-file must not be empty")
+	if len(f.VersionsFiles) == 0 {
+		return errors.New("at least one --versions-file flag must be specified")
 	}
 	switch f.Platform {
 	case "podman", "docker":
