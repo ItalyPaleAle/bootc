@@ -3,8 +3,10 @@
 Custom images for CentOS Stream that can be used with bootc. Currently supports CentOS Stream 9.
 
 - [`tailscale`](#tailscale-image): Includes Tailscale
-- [`base`](#base-image): Includes Tailscale and Cloudflare Tunnel client (cloudflared)
+- [`base`](#base-image): Includes some basic system tools (built on top of `tailscale`)
 - [`zfs`](#zfs-image): Includes ZFS as a kernel module (built on top of `base`)
+- [`monitoring`](#monitoring-image): Includes Grafana Alloy (built on top of `base`)
+- [`monitoring-zfs`](#monitoring-zfs-image): Includes Grafana Alloy (built on top of `zfs`)
 
 These images are built using GitHub Actions every Monday and Friday, from the upstream images of CentOS Stream.
 
@@ -22,7 +24,7 @@ Image:
 ghcr.io/italypaleale/bootc/centos9/tailscale:latest
 ```
 
-[Containerfile](./el9/tailscale/Containerfile)
+[Source](./el9/tailscale/)
 
 ## `base` image
 
@@ -39,7 +41,7 @@ Image:
 ghcr.io/italypaleale/bootc/centos9/base:latest
 ```
 
-[Containerfile](./el9/base/Containerfile)
+[Source](./el9/base/)
 
 ## `zfs` image
 
@@ -54,9 +56,8 @@ Image:
 ghcr.io/italypaleale/bootc/centos9/zfs:latest
 ```
 
-[Containerfile](./el9/zfs/Containerfile)
+[Source](./el9/zfs/)
 
-<!--
 ## `monitoring` image
 
 Includes:
@@ -71,7 +72,7 @@ Image:
 ghcr.io/italypaleale/bootc/centos9/monitoring:latest
 ```
 
-[Containerfile](./el9/monitoring/Containerfile)
+[Source](./el9/monitoring/)
 
 ## `monitoring-zfs` image
 
@@ -87,8 +88,7 @@ Image:
 ghcr.io/italypaleale/bootc/centos9/monitoring-zfs:latest
 ```
 
-[Containerfile](./el9/monitoring/Containerfile)
--->
+[Source](./el9/monitoring-zfs/)
 
 ## Build images
 

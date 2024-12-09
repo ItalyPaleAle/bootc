@@ -1,0 +1,4 @@
+imageName: 'monitoring'
+baseImage: 'base'
+apps:
+  - 'alloy'
