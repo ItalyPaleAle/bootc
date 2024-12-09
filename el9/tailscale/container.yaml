@@ -1,4 +1,4 @@
 imageName: 'tailscale'
-baseImage: 'centos-stream'
+baseImage: 'default'
 apps:
   - 'tailscale'

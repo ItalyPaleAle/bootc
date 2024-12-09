@@ -25,6 +25,9 @@ jobs:
       id-token: write
       attestations: write
 
+    env:
+      DEFAULT_BASE_IMAGE: "centos-stream"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -105,6 +108,7 @@ jobs:
           .bin/tools \
             build \
             ./el9/tailscale \
+            --default-base-image "$DEFAULT_BASE_IMAGE" \
             --versions-file versions.yaml \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
@@ -124,6 +128,7 @@ jobs:
           .bin/tools \
             build \
             ./el9/base \
+            --default-base-image "$DEFAULT_BASE_IMAGE" \
             --versions-file versions.yaml \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
@@ -143,6 +148,7 @@ jobs:
           .bin/tools \
             build \
             ./el9/zfs \
+            --default-base-image "$DEFAULT_BASE_IMAGE" \
             --versions-file versions.yaml \
             --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \

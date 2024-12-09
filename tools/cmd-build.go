@@ -52,6 +52,7 @@ func init() {
 	buildCmd.Flags().BoolVarP(&flags.Push, "push", "p", false, "Push the container image after being built")
 	buildCmd.Flags().StringVar(&flags.Platform, "platform", "podman", "Container platform to use: 'podman' or 'docker'")
 	buildCmd.Flags().StringVarP(&flags.Repository, "repository", "r", "localhost/bootc", "Base repository for tagging images")
+	buildCmd.Flags().StringVarP(&flags.DefaultBaseImage, "default-base-image", "b", "", "Name of the default base image to use, from the versions file")
 	buildCmd.Flags().StringSliceVarP(&flags.Tags, "tag", "t", []string{"latest"}, "Tag(s) for the image, for pushing ('latest' is added automatically)")
 	buildCmd.Flags().StringSliceVarP(&flags.Archs, "arch", "a", []string{"amd64"}, "Architecture(s) for building the image")
 	buildCmd.Flags().StringVarP(&flags.VersionsFile, "versions-file", "f", "versions.yaml", "Path to the versions.yaml file")
@@ -60,12 +61,13 @@ func init() {
 }
 
 type buildFlags struct {
-	Push         bool
-	Platform     string
-	Repository   string
-	Tags         []string
-	Archs        []string
-	VersionsFile string
+	DefaultBaseImage string
+	Push             bool
+	Platform         string
+	Repository       string
+	Tags             []string
+	Archs            []string
+	VersionsFile     string
 
 	Paths []string
 }
@@ -74,6 +76,9 @@ func (f *buildFlags) Validate() error {
 	// Validate required parameters
 	if len(f.Archs) == 0 {
 		return errors.New("at least one --arch flag must be specified")
+	}
+	if f.DefaultBaseImage == "" {
+		return errors.New("flag --default-base-image must not be empty")
 	}
 	if f.Repository == "" {
 		return errors.New("flag --repository must not be empty")
@@ -293,7 +298,12 @@ func (r buildResult) String() string {
 
 func getBuildArgs(flags *buildFlags, containerConfig *ContainerConfig, versions *Versions, manifestNameTag string) ([]string, error) {
 	// Base image
-	baseImageObj, ok := versions.BaseImages[containerConfig.BaseImage]
+	baseImageName := containerConfig.BaseImage
+	if baseImageName == "default" {
+		baseImageName = flags.DefaultBaseImage
+	}
+
+	baseImageObj, ok := versions.BaseImages[baseImageName]
 	if !ok {
 		return nil, fmt.Errorf("base image '%s' is not defined in versions file", containerConfig.BaseImage)
 	}
