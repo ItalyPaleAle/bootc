@@ -11,7 +11,7 @@ baseImages:
     localImage: zfs
 apps:
   alloy:
-    version: 1.5.0
+    version: 1.5.1
     cmds:
       updateVersion: |
         curl -Ls "https://api.github.com/repos/grafana/alloy/releases/latest" \
