@@ -1,0 +1,59 @@
+name: "Update versions"
+
+on:
+  schedule:
+    # https://crontab.guru/#42_16_*/2_*_*
+    - cron: '42 16 */2 * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'tools/go.mod'
+
+      # Compile the tools app
+      - name: Compile tools app
+        run: |
+          mkdir -p ../.bin
+          go build \
+            -v \
+            -o ../.bin/tools
+        working-directory: ./tools
+
+      # Run the update-versions tool
+      - name: "Run the update-versions tool"
+        id: update-versions
+        run: |
+          .bin/tools \
+            update-versions \
+            --versions-file versions.yaml
+
+          if git diff; then
+            echo "changed=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Create Pull Request if there are changes
+      - name: Create Pull Request
+        if: steps.update-versions.outputs.changed == '1'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: 'Update versions file'
+          committer: 'github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>'
+          author: '${{ github.actor }} <${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com>'
+          branch: 'update-versions'
+          branch-suffix: 'timestamp'
+          title: 'Update versions'
+          labels: |
+            automated pr
