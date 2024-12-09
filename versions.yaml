@@ -1,23 +1,28 @@
 baseImages:
-  centos-stream:
-    image: "quay.io/centos-bootc/centos-bootc"
-    tag: "stream9"
-    digest: "sha256:2c164c94b1e8eb4188b3fc1128a2d7c8c0ffcabf7d2ca64d4f5fc0a201d70023"
   base:
-    localImage: "base"
+    localImage: base
+  centos-stream:
+    image: quay.io/centos-bootc/centos-bootc
+    tag: stream9
+    digest: sha256:2c164c94b1e8eb4188b3fc1128a2d7c8c0ffcabf7d2ca64d4f5fc0a201d70023
   tailscale:
-    localImage: "tailscale"
-
+    localImage: tailscale
 apps:
-  tailscale:
-    version: "1.78.1"
+  gotop:
+    version: 4.2.0
+    checksums: 9c3f2f072b82918c56a15a229b528ba7d1e01d54cc809f64555852fa775ef8a6 gotop_v4.2.0_linux_amd64.rpm
     cmds:
       updateVersion: |
-        curl -Ls "https://api.github.com/repos/tailscale/tailscale/releases/latest" \
+        curl -Ls "https://api.github.com/repos/xxxserxxx/gotop/releases/latest" \
           | jq '.tag_name' -r \
           | cut -c 2-
+      updateChecksums: |
+        VERSION=$(curl -Ls "https://api.github.com/repos/xxxserxxx/gotop/releases/latest" \
+          | jq '.tag_name' -r)
+        SHA=$(curl -sL "https://github.com/xxxserxxx/gotop/releases/download/${VERSION}/gotop_${VERSION}_linux_amd64.rpm" | sha256sum | cut -d " " -f 1)
+        echo "${SHA} gotop_${VERSION}_linux_amd64.rpm"
   restic:
-    version: "0.17.3"
+    version: 0.17.3
     checksums: |
       bf0dd73edfae531c24070e2e7833938613f7b179ed165e6b681098edfdf286c8  restic-0.17.3.tar.gz
       55e81a17232311f77e0098c95e015b1f60fbd2a52e6ccdb87145893610618e52  restic_0.17.3_aix_ppc64.bz2
@@ -53,24 +58,16 @@ apps:
         URL=$(curl -sL https://api.github.com/repos/restic/restic/releases/latest \
           | jq -r '.assets[] | select(.name == "SHA256SUMS") | .browser_download_url')
         curl -sL $URL
-  gotop:
-    version: "4.2.0"
-    checksums: |
-      9c3f2f072b82918c56a15a229b528ba7d1e01d54cc809f64555852fa775ef8a6 gotop_v4.2.0_linux_amd64.rpm
+  tailscale:
+    version: 1.78.1
     cmds:
       updateVersion: |
-        curl -Ls "https://api.github.com/repos/xxxserxxx/gotop/releases/latest" \
+        curl -Ls "https://api.github.com/repos/tailscale/tailscale/releases/latest" \
           | jq '.tag_name' -r \
           | cut -c 2-
-      updateChecksums: |
-        VERSION=$(curl -Ls "https://api.github.com/repos/xxxserxxx/gotop/releases/latest" \
-          | jq '.tag_name' -r)
-        SHA=$(curl -sL "https://github.com/xxxserxxx/gotop/releases/download/${VERSION}/gotop_${VERSION}_linux_amd64.rpm" | sha256sum | cut -d " " -f 1)
-        echo "${SHA} gotop_${VERSION}_linux_amd64.rpm"
   zfs:
-    version: "2.2.6"
-    checksums: |
-      c92e02103ac5dd77bf01d7209eabdca55c7b3356aa747bb2357ec4222652a2a7  zfs-2.2.6.tar.gz
+    version: 2.2.6
+    checksums: c92e02103ac5dd77bf01d7209eabdca55c7b3356aa747bb2357ec4222652a2a7  zfs-2.2.6.tar.gz
     cmds:
       updateVersion: |
         curl -Ls "https://api.github.com/repos/openzfs/zfs/releases/latest" \
