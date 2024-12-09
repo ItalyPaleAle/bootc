@@ -139,6 +139,26 @@ jobs:
           echo "ImageName=$(jq -r '.imageName' .out/base.json)" >> "$GITHUB_OUTPUT"
           echo "Digest=$(jq -r '.digest' .out/base.json)" >> "$GITHUB_OUTPUT"
 
+      # Build and push Docker image for monitoring
+      # For linux/amd64 and linux/arm64
+      - name: "Build and push Docker image: monitoring"
+        id: build-and-push-monitoring
+        run: |
+          set -euo pipefail
+          .bin/tools \
+            build \
+            ./el9/monitoring \
+            --default-monitoring-image "$DEFAULT_BASE_IMAGE" \
+            --versions-file versions.yaml \
+            --arch amd64,arm64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
+            --platform docker \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/monitoring.json
+          echo "ImageName=$(jq -r '.imageName' .out/monitoring.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/monitoring.json)" >> "$GITHUB_OUTPUT"
+
       # Build and push Docker image for zfs
       # For linux/amd64
       - name: "Build and push Docker image: zfs"
@@ -159,6 +179,26 @@ jobs:
           echo "ImageName=$(jq -r '.imageName' .out/zfs.json)" >> "$GITHUB_OUTPUT"
           echo "Digest=$(jq -r '.digest' .out/zfs.json)" >> "$GITHUB_OUTPUT"
 
+      # Build and push Docker image for zfs-monitoring
+      # For linux/amd64
+      - name: "Build and push Docker image: zfs-monitoring"
+        id: build-and-push-zfs-monitoring
+        run: |
+          set -euo pipefail
+          .bin/tools \
+            build \
+            ./el9/zfs-monitoring \
+            --default-base-image "$DEFAULT_BASE_IMAGE" \
+            --versions-file versions.yaml \
+            --arch amd64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
+            --platform docker \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/zfs-monitoring.json
+          echo "ImageName=$(jq -r '.imageName' .out/zfs-monitoring.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/zfs-monitoring.json)" >> "$GITHUB_OUTPUT"
+
       - name: 'Container image attestation: tailscale'
         uses: actions/attest-build-provenance@v1
         with:
@@ -173,9 +213,23 @@ jobs:
           subject-digest: ${{ steps.build-and-push-base.outputs.Digest }}
           push-to-registry: true
 
+      - name: 'Container image attestation: monitoring'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.build-and-push-monitoring.outputs.ImageName }}
+          subject-digest: ${{ steps.build-and-push-monitoring.outputs.Digest }}
+          push-to-registry: true
+
       - name: 'Container image attestation: zfs'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-zfs.outputs.Digest }}
+          push-to-registry: true
+
+      - name: 'Container image attestation: zfs-monitoring'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.build-and-push-zfs-monitoring.outputs.ImageName }}
+          subject-digest: ${{ steps.build-and-push-zfs-monitoring.outputs.Digest }}
           push-to-registry: true
