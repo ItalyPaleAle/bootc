@@ -130,20 +130,32 @@ To build images locally, you will need these tools installed:
 
 The Containerfiles are compatible with RHEL too, currently supporting RHEL 9. Due to licensing reasons, the RHEL-based images are not published from this repo automatically.
 
-> The same steps can be used to build with Alma Linux 9 too
+The same steps can be used to build with **Alma Linux 9** too.
+
+> For building RHEL container images, the host OS must be running RHEL as well, or the container will not be able to connect to the Red Hat repositories.
 
 To build images based on RHEL locally:
 
 1. Make sure Podman is authenticated with the Red Hat Container Registry (use `podman login`) **and** so is Docker (the credentials for the registry must be available in the file `~/.docker/config.json` for the `update-versions` tool to work)
 2. Create a `versions.local.yaml` file:
 
-   ```sh
+   ```yaml
    baseImages:
      rhel-9:
        image: registry.redhat.io/rhel9/rhel-bootc
        tag: latest
        digest: ''
    ```
+
+   > For Alma Linux 9, use:
+   >
+   > ```yaml
+   > baseImages:
+   >   alma-linux-9:
+   >     image: quay.io/almalinuxorg/almalinux-bootc
+   >     tag: '9'
+   >     digest: ''
+   > ```
 
 3. Run the `update-versions` tool to fetch the latest digests:
 

@@ -12,14 +12,23 @@ ARG CHECKSUMS_GOTOP
 RUN <<EOT
   set -euxo pipefail
 
-  # Add the EPEL repositories, jq and tmux
-  dnf install -y \
-    epel-release jq tmux
+  # Add the EPEL repositories
+  case $(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"') in
+    rhel)
+      dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+    ;;
+    *)
+      dnf install -y epel-release
+    ;;
+  esac
+EOT
 
-  # From the EPEL repositories, add:
-  # screen, pv, sqlite
+RUN <<EOT
+  set -euxo pipefail
+
+  # Add: screen, pv, sqlite, tmux, jq
   dnf install -y --enablerepo=epel \
-    screen pv sqlite
+    screen pv sqlite tmux jq
 
   # Add restic, fetching the RPM from the official GitHub repository
   # The RPM that is shipped in the official repositories is often very outdated

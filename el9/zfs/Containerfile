@@ -22,9 +22,17 @@ RUN <<EOT
     python3 python3-devel python3-setuptools python3-packaging python3-cffi libffi-devel git libcurl-devel
 EOT
 
-RUN \
-  dnf install -y --enablerepo=epel --enablerepo=crb \
+RUN <<EOT
+  set -euxo pipefail
+
+  CRB_REPO_NAME=""
+  case $(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"') in
+    rhel) CRB_REPO_NAME="codeready-builder-for-rhel-9-$(arch)-rpms" ;;
+    *) CRB_REPO_NAME="crb" ;;
+  esac
+  dnf install -y --enablerepo=epel --enablerepo=$CRB_REPO_NAME \
     dkms libtirpc-devel ncompress
+EOT
 
 RUN <<EOT
   set -euxo pipefail
