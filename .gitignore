@@ -6,6 +6,9 @@
 .bin/
 .out/
 
+# Scratch files
+scratch
+
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,macos,linux,windows
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,macos,linux,windows
 

@@ -15,6 +15,7 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+
     permissions:
       contents: read
       packages: write
@@ -22,8 +23,11 @@ jobs:
       id-token: write
       attestations: write
 
-    env:
-      DEFAULT_BASE_IMAGE: "centos-stream-9"
+    strategy:
+      matrix:
+        baseImage:
+          - centos-stream-9
+          - alma-linux-9
 
     steps:
       - name: Checkout repository
@@ -102,10 +106,10 @@ jobs:
           .bin/tools \
             build \
             ./el9/tailscale \
-            --default-base-image "$DEFAULT_BASE_IMAGE" \
+            --default-base-image "${{ matrix.baseImage }}" \
             --versions-file versions.yaml \
             --arch amd64,arm64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
             --platform docker \
             --push \
             --tag "$(date +"%Y%m%d")" \
@@ -122,10 +126,10 @@ jobs:
           .bin/tools \
             build \
             ./el9/base \
-            --default-base-image "$DEFAULT_BASE_IMAGE" \
+            --default-base-image "${{ matrix.baseImage }}" \
             --versions-file versions.yaml \
             --arch amd64,arm64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
             --platform docker \
             --push \
             --tag "$(date +"%Y%m%d")" \
@@ -142,10 +146,10 @@ jobs:
           .bin/tools \
             build \
             ./el9/monitoring \
-            --default-base-image "$DEFAULT_BASE_IMAGE" \
+            --default-base-image "${{ matrix.baseImage }}" \
             --versions-file versions.yaml \
             --arch amd64,arm64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
             --platform docker \
             --push \
             --tag "$(date +"%Y%m%d")" \
@@ -162,10 +166,10 @@ jobs:
           .bin/tools \
             build \
             ./el9/zfs \
-            --default-base-image "$DEFAULT_BASE_IMAGE" \
+            --default-base-image "${{ matrix.baseImage }}" \
             --versions-file versions.yaml \
             --arch amd64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
             --platform docker \
             --push \
             --tag "$(date +"%Y%m%d")" \
@@ -182,10 +186,10 @@ jobs:
           .bin/tools \
             build \
             ./el9/monitoring-zfs \
-            --default-base-image "$DEFAULT_BASE_IMAGE" \
+            --default-base-image "${{ matrix.baseImage }}" \
             --versions-file versions.yaml \
             --arch amd64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/centos9/" \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
             --platform docker \
             --push \
             --tag "$(date +"%Y%m%d")" \

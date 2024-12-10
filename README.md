@@ -1,6 +1,6 @@
 # bootc images for CentOS Stream
 
-Custom images for CentOS Stream that can be used with bootc. Currently supports CentOS Stream 9.
+Custom images for CentOS Stream that can be used with bootc. Currently supports CentOS Stream 9 and Alma Linux 9.
 
 - [`tailscale`](#tailscale-image): Includes Tailscale
 - [`base`](#base-image): Includes some basic system tools (built on top of `tailscale`)
@@ -21,7 +21,8 @@ Includes:
 Image:
 
 ```text
-ghcr.io/italypaleale/bootc/centos9/tailscale:latest
+ghcr.io/italypaleale/bootc/centos-stream-9/tailscale:latest
+ghcr.io/italypaleale/bootc/alma-linux-9/tailscale:latest
 ```
 
 [Source](./el9/tailscale/)
@@ -38,7 +39,8 @@ Includes:
 Image:
 
 ```text
-ghcr.io/italypaleale/bootc/centos9/base:latest
+ghcr.io/italypaleale/bootc/centos-stream-9/base:latest
+ghcr.io/italypaleale/bootc/alma-linux-9-9/base:latest
 ```
 
 [Source](./el9/base/)
@@ -53,7 +55,8 @@ Includes:
 Image:
 
 ```text
-ghcr.io/italypaleale/bootc/centos9/zfs:latest
+ghcr.io/italypaleale/bootc/centos-stream-9/zfs:latest
+ghcr.io/italypaleale/bootc/alma-linux-9-9/zfs:latest
 ```
 
 [Source](./el9/zfs/)
@@ -69,7 +72,8 @@ Includes:
 Image:
 
 ```text
-ghcr.io/italypaleale/bootc/centos9/monitoring:latest
+ghcr.io/italypaleale/bootc/centos-stream-9/monitoring:latest
+ghcr.io/italypaleale/bootc/alma-linux-9-9/monitoring:latest
 ```
 
 [Source](./el9/monitoring/)
@@ -85,7 +89,8 @@ Includes:
 Image:
 
 ```text
-ghcr.io/italypaleale/bootc/centos9/monitoring-zfs:latest
+ghcr.io/italypaleale/bootc/centos-stream-9/monitoring-zfs:latest
+ghcr.io/italypaleale/bootc/alma-linux-9-9/monitoring-zfs:latest
 ```
 
 [Source](./el9/monitoring-zfs/)
@@ -113,7 +118,7 @@ To build images locally, you will need these tools installed:
    .bin/tools update-versions -f ./versions.yaml
    ```
 
-3. Build an image. The command below is an example to build the [tailscale](./el9/tailscale) image, pushing it to Docker Hub at `docker.io/username/bootc/centos9/tailscale` with the tag as the current date.
+3. Build an image. The command below is an example to build the [tailscale](./el9/tailscale) image, pushing it to Docker Hub at `docker.io/username/bootc/centos-stream-9/tailscale` with the tag as the current date.
 
    ```sh
    .bin/tools build \
@@ -121,7 +126,7 @@ To build images locally, you will need these tools installed:
       --default-base-image "centos-stream-9" \
       --versions-file versions.yaml \
       --arch amd64,arm64 \
-      --repository "docker.io/username/bootc/centos9" \
+      --repository "docker.io/username/bootc/centos-stream-9" \
       --push \
       --tag "$(date +"%Y%m%d")"
    ```
@@ -129,8 +134,6 @@ To build images locally, you will need these tools installed:
 ## Use with RHEL
 
 The Containerfiles are compatible with RHEL too, currently supporting RHEL 9. Due to licensing reasons, the RHEL-based images are not published from this repo automatically.
-
-The same steps can be used to build with **Alma Linux 9** too.
 
 > For building RHEL container images, the host OS must be running RHEL as well, or the container will not be able to connect to the Red Hat repositories.
 
@@ -146,16 +149,6 @@ To build images based on RHEL locally:
        tag: latest
        digest: ''
    ```
-
-   > For Alma Linux 9, use:
-   >
-   > ```yaml
-   > baseImages:
-   >   alma-linux-9:
-   >     image: quay.io/almalinuxorg/almalinux-bootc
-   >     tag: '9'
-   >     digest: ''
-   > ```
 
 3. Run the `update-versions` tool to fetch the latest digests:
 
