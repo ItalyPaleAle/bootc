@@ -24,6 +24,7 @@ jobs:
       attestations: write
 
     strategy:
+      fail-fast: false
       matrix:
         baseImage:
           - centos-stream-9
