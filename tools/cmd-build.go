@@ -240,7 +240,7 @@ func ProcessContainer(flags *buildFlags, basePath string, versions *Versions) er
 				err = runProcess(runProcessOpts{
 					Name: "podman",
 					Args: []string{
-						"push",
+						"manifest", "push",
 						"--all",
 						manifestNameTag,
 						push,
