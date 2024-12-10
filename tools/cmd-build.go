@@ -186,7 +186,7 @@ func ProcessContainer(flags *buildFlags, basePath string, versions *Versions) er
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to tag manifest: %w", err)
+		return fmt.Errorf("failed to tag manifest '%s': %w", manifestNameTag, err)
 	}
 
 	result.ImageName = flags.buildImageName(containerConfig.ImageName)
@@ -241,6 +241,7 @@ func ProcessContainer(flags *buildFlags, basePath string, versions *Versions) er
 					Name: "podman",
 					Args: []string{
 						"push",
+						"--all",
 						manifestNameTag,
 						push,
 					},
