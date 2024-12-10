@@ -21,10 +21,6 @@ RUN <<EOT
       dnf install -y epel-release
     ;;
   esac
-EOT
-
-RUN <<EOT
-  set -euxo pipefail
 
   # Add: screen, pv, sqlite, tmux, jq
   dnf install -y --enablerepo=epel \
