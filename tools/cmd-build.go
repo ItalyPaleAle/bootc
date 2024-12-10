@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/regclient/regclient"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -186,47 +187,10 @@ func ProcessContainer(flags *buildFlags, basePath string, versions *Versions) er
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to tag manifest: %w", err)
+		return fmt.Errorf("failed to tag manifest '%s': %w", manifestNameTag, err)
 	}
 
 	result.ImageName = flags.buildImageName(containerConfig.ImageName)
-
-	// Get the digest of the image
-	digestOutput := &bytes.Buffer{}
-	if flags.IsPodman() {
-		err = runProcess(runProcessOpts{
-			Name: "podman",
-			Args: []string{
-				"image", "inspect",
-				manifestNameTag,
-				"--format", "{{ .Digest }}",
-			},
-			Stdout: digestOutput,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to get image's digest: %w", err)
-		}
-		result.Digest = strings.TrimSpace(digestOutput.String())
-	} else {
-		err = runProcess(runProcessOpts{
-			Name: "docker",
-			Args: []string{
-				"inspect",
-				"--format", "{{index .RepoDigests 0}}",
-				manifestNameTag,
-			},
-			Stdout: digestOutput,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to get image's digest: %w", err)
-		}
-		// The result with docker starts with the image name, so we need to get the part after the @
-		_, digest, ok := strings.Cut(strings.TrimSpace(digestOutput.String()), "@")
-		if !ok {
-			return errors.New("failed to get image's digest: command output was in an unrecognized format")
-		}
-		result.Digest = digest
-	}
 
 	// Push if desired
 	if flags.Push {
@@ -240,7 +204,8 @@ func ProcessContainer(flags *buildFlags, basePath string, versions *Versions) er
 				err = runProcess(runProcessOpts{
 					Name: "podman",
 					Args: []string{
-						"push",
+						"manifest", "push",
+						"--all",
 						manifestNameTag,
 						push,
 					},
@@ -275,6 +240,14 @@ func ProcessContainer(flags *buildFlags, basePath string, versions *Versions) er
 
 			result.Tags = append(result.Tags, tag)
 			result.Pushed = append(result.Pushed, push)
+		}
+
+		// Get the digest of the image
+		// This works reliably only after the image has been pushed
+		rc := regclient.New(regclient.WithDockerCreds())
+		result.Digest, err = getImageDigest(context.TODO(), rc, flags.buildImageNameTag(containerConfig.ImageName, "latest"))
+		if err != nil {
+			return fmt.Errorf("failed to get digest for image: %w", err)
 		}
 	}
 
