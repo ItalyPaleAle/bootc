@@ -40,7 +40,7 @@ Image:
 
 ```text
 ghcr.io/italypaleale/bootc/centos-stream-9/base:latest
-ghcr.io/italypaleale/bootc/alma-linux-9-9/base:latest
+ghcr.io/italypaleale/bootc/alma-linux-9/base:latest
 ```
 
 [Source](./el9/base/)
@@ -56,7 +56,7 @@ Image:
 
 ```text
 ghcr.io/italypaleale/bootc/centos-stream-9/zfs:latest
-ghcr.io/italypaleale/bootc/alma-linux-9-9/zfs:latest
+ghcr.io/italypaleale/bootc/alma-linux-9/zfs:latest
 ```
 
 [Source](./el9/zfs/)
@@ -73,7 +73,7 @@ Image:
 
 ```text
 ghcr.io/italypaleale/bootc/centos-stream-9/monitoring:latest
-ghcr.io/italypaleale/bootc/alma-linux-9-9/monitoring:latest
+ghcr.io/italypaleale/bootc/alma-linux-9/monitoring:latest
 ```
 
 [Source](./el9/monitoring/)
@@ -90,7 +90,7 @@ Image:
 
 ```text
 ghcr.io/italypaleale/bootc/centos-stream-9/monitoring-zfs:latest
-ghcr.io/italypaleale/bootc/alma-linux-9-9/monitoring-zfs:latest
+ghcr.io/italypaleale/bootc/alma-linux-9/monitoring-zfs:latest
 ```
 
 [Source](./el9/monitoring-zfs/)
