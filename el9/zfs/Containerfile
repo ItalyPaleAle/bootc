@@ -1,5 +1,5 @@
-# Base image for the final layer
-ARG BASE_IMAGE=quay.io/centos-bootc/centos-bootc:stream9
+# Base image
+ARG BASE_IMAGE
 
 # Using https://openzfs.github.io/openzfs-docs/Developer%20Resources/Custom%20Packages.html
 FROM ${BASE_IMAGE} AS builder
@@ -16,7 +16,7 @@ RUN <<EOT
   VERSION_KERNEL=$(rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')
 
   dnf install -y \
-    jq epel-release make autoconf automake gcc libtool rpm-build libblkid-devel \
+    jq make autoconf automake gcc libtool rpm-build libblkid-devel \
     libuuid-devel libudev-devel openssl-devel zlib-devel libaio-devel libattr-devel elfutils-libelf-devel \
     kernel-${VERSION_KERNEL} kernel-modules-${VERSION_KERNEL} kernel-devel-${VERSION_KERNEL} \
     python3 python3-devel python3-setuptools python3-packaging python3-cffi libffi-devel git libcurl-devel
