@@ -1,8 +1,8 @@
 baseImages:
   alma-linux-9:
     image: quay.io/almalinuxorg/almalinux-bootc
-    tag: '9'
-    digest: sha256:da9608ed1c7768269748569ba101bdd6fe27a0cc4d3fb5ad35c9d75f0ad81eba
+    tag: "9"
+    digest: sha256:451f3e8357465ce19375642df826cb9e645c21465f2c3d1f7f9dfdb38c35b488
   base:
     localImage: base
   centos-stream-9:
@@ -79,8 +79,8 @@ apps:
           | jq '.tag_name' -r \
           | cut -c 2-
   zfs:
-    version: 2.2.6
-    checksums: c92e02103ac5dd77bf01d7209eabdca55c7b3356aa747bb2357ec4222652a2a7  zfs-2.2.6.tar.gz
+    version: 2.2.7
+    checksums: b2b8e3bfabf2a6407a0132243726cb6762547a5bd095b1b1f37eaf2a9d8f7672  zfs-2.2.7.tar.gz
     cmds:
       updateVersion: |
         curl -Ls "https://api.github.com/repos/openzfs/zfs/releases/latest" \
