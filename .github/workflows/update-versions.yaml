@@ -2,8 +2,8 @@ name: "Update versions"
 
 on:
   schedule:
-    # https://crontab.guru/#42_16_*/2_*_*
-    - cron: '42 16 */2 * *'
+    # https://crontab.guru/#42_13_*/2_*_*
+    - cron: '42 13 */2 * *'
   workflow_dispatch:
 
 jobs:
