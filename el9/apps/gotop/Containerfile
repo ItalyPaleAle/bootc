@@ -1,0 +1,17 @@
+ARG VERSION_GOTOP
+ARG CHECKSUMS_GOTOP
+
+RUN <<EOT
+  set -euxo pipefail
+
+  # Add gotop, fetching the RPM from the official GitHub repository
+  # This is installed on x86_64 only as pre-compiled RPMs are not available for other archs from the project
+  if [ "$(uname -m)" = "x86_64" ]; then
+    curl -LO "https://github.com/xxxserxxx/gotop/releases/download/v${VERSION_GOTOP}/gotop_v${VERSION_GOTOP}_linux_amd64.rpm"
+    echo "${CHECKSUMS_GOTOP}" | sha256sum --check --ignore-missing --status
+    dnf install -y "gotop_v${VERSION_GOTOP}_linux_amd64.rpm"
+  fi
+
+  # Clean-up
+  dnf clean all
+EOT

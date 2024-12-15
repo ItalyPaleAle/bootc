@@ -1,0 +1,7 @@
+name: tailscale
+version: 1.78.1
+cmds:
+  updateVersion: |
+    curl -Ls "https://api.github.com/repos/tailscale/tailscale/releases/latest" \
+      | jq '.tag_name' -r \
+      | cut -c 2-

@@ -14,14 +14,36 @@ type ContainerConfig struct {
 	ImageName     string   `yaml:"imageName"`
 	BaseImage     string   `yaml:"baseImage"`
 	Apps          []string `yaml:"apps"`
+
+	SavePath string `yaml:"-"`
 }
 
-func NewContainerConfig() *ContainerConfig {
-	return &ContainerConfig{
+func LoadContainerConfig(fileName string, overrideFileName string) (*ContainerConfig, error) {
+	config := &ContainerConfig{
 		Containerfile: "Containerfile",
 		BuildContext:  ".",
 		Apps:          make([]string, 0),
+
+		SavePath: fileName,
 	}
+	err := loadYamlFile(config, fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	if overrideFileName != "" {
+		err = loadYamlFile(config, overrideFileName)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		}
+	}
+
+	err = config.Validate(filepath.Dir(fileName))
+	if err != nil {
+		return nil, fmt.Errorf("container configuration is invalid: %w", err)
+	}
+
+	return config, nil
 }
 
 func (c *ContainerConfig) Validate(basePath string) error {

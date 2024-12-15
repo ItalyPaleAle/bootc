@@ -1,4 +1,4 @@
 imageName: 'k3s'
-baseImage: 'base'
+baseImage: 'base' # ../base
 apps:
   - 'k3s'

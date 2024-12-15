@@ -1,0 +1,21 @@
+ARG VERSION_RESTIC
+ARG CHECKSUMS_RESTIC
+
+RUN <<EOT
+  set -euxo pipefail
+
+  # Add restic, fetching the pre-compiled binary from the official GitHub repository
+  # The RPM that is shipped in the official repositories is often very outdated
+  ARCH=$(uname -m) 
+  case $ARCH in
+    x86_64) ARCH="amd64" ;;
+    aarch64) ARCH="arm64" ;;
+  esac
+
+  # Download the binary
+  curl -sLO "https://github.com/restic/restic/releases/download/v${VERSION_RESTIC}/restic_${VERSION_RESTIC}_linux_${ARCH}.bz2"
+  echo "${CHECKSUMS_RESTIC}" | sha256sum --check --ignore-missing --status
+  bunzip2 -c "restic_${VERSION_RESTIC}_linux_${ARCH}.bz2" > /usr/local/bin/restic
+  chmod +x /usr/local/bin/restic
+  /usr/local/bin/restic version
+EOT

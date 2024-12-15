@@ -1,0 +1,26 @@
+baseImages:
+  alma-linux-9:
+    image: quay.io/almalinuxorg/almalinux-bootc
+    tag: "9"
+    digest: sha256:e725ac7057917692509356cf3e98955ecaf77caba683237b8146af05975acebb
+  centos-stream-9:
+    image: quay.io/centos-bootc/centos-bootc
+    tag: stream9
+    digest: sha256:5fc8a03e604e0721361f993a812fbaf03e211937919c638ab63e930de078ec24
+folders:
+  apps: apps
+  containers: containers
+containers:
+  - base
+  - tailscale
+  - zfs
+  - monitoring
+  - monitoring-zfs
+  - k3s
+apps:
+  - alloy
+  - gotop
+  - k3s
+  - restic
+  - tailscale
+  - zfs

@@ -26,14 +26,13 @@ func init() {
 				return err
 			}
 
-			flags.VersionsFile, err = filepath.Abs(flags.VersionsFile)
+			flags.WorkDir, err = filepath.Abs(flags.WorkDir)
 			if err != nil {
 				return fmt.Errorf("failed to get path to versions file: %w", err)
 			}
 
-			// Load the version file
-			fmt.Fprintf(os.Stderr, "Loading versions file: %s\n", flags.VersionsFile)
-			versions, err := LoadVersions([]string{flags.VersionsFile})
+			// Load the config file
+			config, err := LoadConfigFile(flags.WorkDir, flags.ConfigFileName, "")
 			if err != nil {
 				return fmt.Errorf("failed to load versions file: %w", err)
 			}
@@ -45,9 +44,9 @@ func init() {
 			rc := regclient.New(regclient.WithDockerCreds())
 
 			// Check for updates for base images
-			for imageId, baseImage := range versions.BaseImages {
-				// Ignore local images
-				if baseImage == nil || baseImage.LocalImage != "" {
+			var updatedBaseImages bool
+			for imageId, baseImage := range config.BaseImages {
+				if baseImage.Image == "" {
 					continue
 				}
 
@@ -63,49 +62,56 @@ func init() {
 
 				if digest != baseImage.Digest {
 					baseImage.Digest = digest
+					config.BaseImages[imageId] = baseImage
+					updatedBaseImages = true
 					updated = append(updated, fmt.Sprintf("Base image %s (%s): %s", imageId, image, digest))
 				}
 			}
 
 			// Check for updates for apps
-			for appId, app := range versions.Apps {
+			for appName, app := range config.appsMap {
 				// Skip apps that don't have an update version command
 				if app == nil || app.Cmds == nil || app.Cmds.UpdateVersion == "" {
 					continue
 				}
 
-				fmt.Fprintf(os.Stderr, "Checking for updates for app %s\n  Current version: %s\n", appId, app.Version)
+				fmt.Fprintf(os.Stderr, "Checking for updates for app %s\n  Current version: %s\n", appName, app.Version)
 
 				out := &bytes.Buffer{}
 				err = runShellScript(app.Cmds.UpdateVersion, out, true)
 				if err != nil {
-					return fmt.Errorf("failed to get updated version for app '%s': %w", appId, err)
+					return fmt.Errorf("failed to get updated version for app '%s': %w", appName, err)
 				}
 				version := strings.TrimSpace(out.String())
 				fmt.Fprintf(os.Stderr, "  Latest version: %s\n", version)
 
 				if version == app.Version {
-					// Do not fetch updated checksums if the version hasn't changed
+					// Version hasn't changed, so nothing to do
 					continue
 				}
 
 				app.Version = version
-				updated = append(updated, fmt.Sprintf("App %s: %s", appId, version))
+				updated = append(updated, fmt.Sprintf("App %s: %s", appName, version))
 
 				// Fetch the updated checksum if needed
-				if app.Cmds.UpdateChecksums == "" {
-					continue
+				if app.Cmds.UpdateChecksums != "" {
+					out.Reset()
+					err = runShellScript(app.Cmds.UpdateChecksums, out, true)
+					if err != nil {
+						return fmt.Errorf("failed to get updated checksum for app '%s': %w", appName, err)
+					}
+					checksum := strings.TrimSpace(out.String())
+
+					app.Checksums = checksum
+					fmt.Fprint(os.Stderr, "  Updated checksum\n")
 				}
 
-				out.Reset()
-				err = runShellScript(app.Cmds.UpdateChecksums, out, true)
+				// Save the updated app
+				fmt.Fprintf(os.Stderr, "Saving updated app version '%s': %s\n", appName, app.SavePath)
+				err = saveYamlFile(app, app.SavePath)
 				if err != nil {
-					return fmt.Errorf("failed to get updated checksum for app '%s': %w", appId, err)
+					return fmt.Errorf("failed to save updated app configuration file: %w", err)
 				}
-				checksum := strings.TrimSpace(out.String())
-
-				app.Checksums = checksum
-				fmt.Fprint(os.Stderr, "  Updated checksum\n")
 			}
 
 			// Save the updated versions file if there have been changes
@@ -114,15 +120,18 @@ func init() {
 				return nil
 			}
 
-			fmt.Fprintf(os.Stderr, "Saving updated versions file: %s\n", flags.VersionsFile)
-			err = versions.Save(flags.VersionsFile)
-			if err != nil {
-				return fmt.Errorf("failed to save updated versions file: %w", err)
+			// Save the updated config file if base images have been updated
+			if updatedBaseImages && config.SavePath != "" {
+				fmt.Fprintf(os.Stderr, "Saving updated config file: %s\n", config.SavePath)
+				err = saveYamlFile(config, config.SavePath)
+				if err != nil {
+					return fmt.Errorf("failed to save updated config file: %w", err)
+				}
 			}
 
 			// Print list of updates as markdown
 			for _, u := range updated {
-				fmt.Println("- " + u + "\n")
+				fmt.Println("- " + u)
 			}
 
 			return nil
@@ -130,21 +139,27 @@ func init() {
 	}
 
 	updateVersionsCmd.Flags().StringVar(&flags.Platform, "platform", "podman", "Container platform to use: 'podman' or 'docker'")
-	updateVersionsCmd.Flags().StringVarP(&flags.VersionsFile, "versions-file", "f", "versions.yaml", "Path to the versions.yaml file")
+	updateVersionsCmd.Flags().StringVarP(&flags.WorkDir, "work-dir", "w", ".", "Working directory, containing the config file, the apps, and containers")
+	updateVersionsCmd.Flags().StringVarP(&flags.ConfigFileName, "config-file-name", "n", "config.yaml", "Name of the config file in the working directory")
 
 	rootCmd.AddCommand(updateVersionsCmd)
 }
 
 type updateVersionsFlags struct {
-	VersionsFile string
-	Platform     string
+	WorkDir        string
+	Platform       string
+	ConfigFileName string
 }
 
 func (f updateVersionsFlags) Validate() error {
 	// Validate required parameters
-	if f.VersionsFile == "" {
-		return errors.New("flag --versions-file must not be empty")
+	if f.WorkDir == "" {
+		return errors.New("flag --work-dir must not be empty")
 	}
+	if f.ConfigFileName == "" {
+		return errors.New("flag --config-file-name must not be empty")
+	}
+
 	switch f.Platform {
 	case "podman", "docker":
 		// All good

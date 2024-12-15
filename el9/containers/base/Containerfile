@@ -1,0 +1,20 @@
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE}
+
+RUN <<EOT
+  set -euxo pipefail
+
+  # Add the EPEL repositories
+  dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+  # Fix for certain scenarios where $releasever is incorrect with EPEL
+  # See: https://bugzilla.redhat.com/show_bug.cgi?id=2219796
+  sed -i 's/$releasever/9/g' /etc/yum.repos.d/epel*.repo
+
+  # Add: screen, pv, sqlite, tmux, jq
+  dnf install -y --enablerepo=epel \
+    screen pv sqlite tmux jq
+
+  # Clean-up
+  dnf clean all
+EOT

@@ -1,6 +1,8 @@
 # Override files
-**/container.*.yaml
-**/versions.*.yaml
+**/config.override.yaml
+**/app.override.yaml
+**/container.override.yaml
+**/versions.override.yaml
 
 # Output/compiled files
 .bin/

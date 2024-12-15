@@ -2,8 +2,8 @@
 
 Custom images for CentOS Stream that can be used with bootc. Currently supports CentOS Stream 9 and Alma Linux 9.
 
-- [`tailscale`](#tailscale-image): Includes Tailscale
-- [`base`](#base-image): Includes some basic system tools (built on top of `tailscale`)
+- [`base`](#base-image): Includes some basic system tools
+- [`tailscale`](#tailscale-image): Includes Tailscale (built on top of `base`)
 - [`k3s`](#k3s-image): Includes K3s (built on top of `base`)
 - [`zfs`](#zfs-image): Includes ZFS as a kernel module (built on top of `base`)
 - [`monitoring`](#monitoring-image): Includes Grafana Alloy (built on top of `base`)
@@ -13,26 +13,10 @@ These images are built using GitHub Actions every Monday and Friday, from the up
 
 Images are published on GitHub Packages and available for linux/amd64 and linux/arm64 (except ZFS).
 
-## `tailscale` image
-
-Includes:
-
-- [Tailscale](https://tailscale.com/)
-
-Image:
-
-```text
-ghcr.io/italypaleale/bootc/centos-stream-9/tailscale:latest
-ghcr.io/italypaleale/bootc/alma-linux-9/tailscale:latest
-```
-
-[Source](./el9/tailscale/)
-
 ## `base` image
 
 Includes:
 
-- Everything in the [`tailscale` image](#tailscale-image)
 - [restic](https://github.com/restic/restic)
 - [gotop](https://github.com/xxxserxxx/gotop)
 - Utilities: `screen`, `pv`, `sqlite`, `jq`
@@ -44,7 +28,23 @@ ghcr.io/italypaleale/bootc/centos-stream-9/base:latest
 ghcr.io/italypaleale/bootc/alma-linux-9/base:latest
 ```
 
-[Source](./el9/base/)
+[Source](./el9/containers/base/)
+
+## `tailscale` image
+
+Includes:
+
+- Everything in the [`base` image](#base-image)
+- [Tailscale](https://tailscale.com/)
+
+Image:
+
+```text
+ghcr.io/italypaleale/bootc/centos-stream-9/tailscale:latest
+ghcr.io/italypaleale/bootc/alma-linux-9/tailscale:latest
+```
+
+[Source](./el9/containers/tailscale/)
 
 ## `k3s` image
 
@@ -60,7 +60,7 @@ ghcr.io/italypaleale/bootc/centos-stream-9/k3s:latest
 ghcr.io/italypaleale/bootc/alma-linux-9/k3s:latest
 ```
 
-[Source](./el9/k3s/)
+[Source](./el9/containers/k3s/)
 
 ### Using K3s
 
@@ -89,7 +89,7 @@ ghcr.io/italypaleale/bootc/centos-stream-9/zfs:latest
 ghcr.io/italypaleale/bootc/alma-linux-9/zfs:latest
 ```
 
-[Source](./el9/zfs/)
+[Source](./el9/containers/zfs/)
 
 ## `monitoring` image
 
@@ -106,7 +106,7 @@ ghcr.io/italypaleale/bootc/centos-stream-9/monitoring:latest
 ghcr.io/italypaleale/bootc/alma-linux-9/monitoring:latest
 ```
 
-[Source](./el9/monitoring/)
+[Source](./el9/containers/monitoring/)
 
 ## `monitoring-zfs` image
 
@@ -123,7 +123,7 @@ ghcr.io/italypaleale/bootc/centos-stream-9/monitoring-zfs:latest
 ghcr.io/italypaleale/bootc/alma-linux-9/monitoring-zfs:latest
 ```
 
-[Source](./el9/monitoring-zfs/)
+[Source](./el9/containers/monitoring-zfs/)
 
 ## Build images
 
@@ -145,16 +145,16 @@ To build images locally, you will need these tools installed:
 2. (Optional) to update the versions of apps and base images, run the `update-versions` command:
 
    ```sh
-   .bin/tools update-versions -f ./versions.yaml
+   .bin/tools update-versions --work-dir ./el9
    ```
 
-3. Build an image. The command below is an example to build the [tailscale](./el9/tailscale) image, pushing it to Docker Hub at `docker.io/username/bootc/centos-stream-9/tailscale` with the tag as the current date.
+3. Build an image. The command below is an example to build the [base](./el9/containers/base) image, pushing it to Docker Hub at `docker.io/username/bootc/centos-stream-9/base` with the tag as the current date.
 
    ```sh
    .bin/tools build \
-      ./el9/tailscale \
+      base \
       --default-base-image "centos-stream-9" \
-      --versions-file versions.yaml \
+      --work-dir ./el9 \
       --arch amd64,arm64 \
       --repository "docker.io/username/bootc/centos-stream-9" \
       --push \
@@ -170,7 +170,7 @@ The Containerfiles are compatible with RHEL too, currently supporting RHEL 9. Du
 To build images based on RHEL locally:
 
 1. Make sure Podman is authenticated with the Red Hat Container Registry (use `podman login`) **and** so is Docker (the credentials for the registry must be available in the file `~/.docker/config.json` for the `update-versions` tool to work)
-2. Create a `versions.local.yaml` file:
+2. Create the file `el9/config.override.yaml` file:
 
    ```yaml
    baseImages:
@@ -183,16 +183,16 @@ To build images based on RHEL locally:
 3. Run the `update-versions` tool to fetch the latest digests:
 
    ```sh
-   .bin/tools update-versions -f ./versions.local.yaml
+   .bin/tools update-versions --work-dir ./el9
    ```
 
-4. Build the containers using `rhel-9` as default base image. For example, to build the [tailscale](./el9/tailscale) image:
+4. Build the containers using `rhel-9` as default base image. For example, to build the [base](./el9/containers/base) image:
 
    ```sh
    .bin/tools build \
-      ./el9/tailscale \
+      base \
       --default-base-image "rhel-9" \
-      --versions-file versions.yaml \
+      --work-dir ./el9 \
       --arch amd64,arm64 \
       --repository "docker.io/username/bootc/rhel9" \
       --push \

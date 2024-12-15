@@ -1,0 +1,16 @@
+name: k3s
+version: 1.31.3+k3s1
+checksums: |-
+  0d4aee46981d6aa78ed9285f8d97be175d6bf07ed3cac952e7f861b4a3ecddf7  k3s
+  2ca79ab27d731e3610bcce84c90f819a627bd631b79a393e6566f4ada22969a1  k3s-arm64
+cmds:
+  updateVersion: |
+    curl -sL "https://api.github.com/repos/k3s-io/k3s/releases/latest" \
+      | jq '.tag_name' -r \
+      | cut -c 2-
+  updateChecksums: |
+    VERSION=$(curl -sL "https://api.github.com/repos/k3s-io/k3s/releases/latest" | jq -r '.tag_name')
+    # Print checksum for "k3s" (for amd64)
+    curl -sL "https://github.com/k3s-io/k3s/releases/download/${VERSION}/sha256sum-amd64.txt" | grep "k3s$"
+    # Print checksum for "k3s-arm64"
+    curl -sL "https://github.com/k3s-io/k3s/releases/download/${VERSION}/sha256sum-arm64.txt" | grep "k3s-arm64$"

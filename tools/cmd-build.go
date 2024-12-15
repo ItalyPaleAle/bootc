@@ -14,7 +14,6 @@ import (
 
 	"github.com/regclient/regclient"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 func init() {
@@ -30,19 +29,19 @@ func init() {
 			if err != nil {
 				return err
 			}
-			flags.Paths = args
+			flags.Containers = args
 
-			// Load the version file
-			versions, err := LoadVersions(flags.VersionsFiles)
+			// Load the config file
+			config, err := LoadConfigFile(flags.WorkDir, "config.yaml", "config.override.yaml")
 			if err != nil {
-				return fmt.Errorf("failed to load versions file: %w", err)
+				return fmt.Errorf("failed to load config file: %w", err)
 			}
 
-			// Process each container
-			for _, path := range flags.Paths {
-				err = ProcessContainer(flags, path, versions)
+			// Process each container in order
+			for _, container := range flags.Containers {
+				err = ProcessContainer(flags, container, config)
 				if err != nil {
-					return fmt.Errorf("failed to process container '%s': %w", path, err)
+					return fmt.Errorf("failed to process container '%s': %w", container, err)
 				}
 			}
 
@@ -53,24 +52,24 @@ func init() {
 	buildCmd.Flags().BoolVarP(&flags.Push, "push", "p", false, "Push the container image after being built")
 	buildCmd.Flags().StringVar(&flags.Platform, "platform", "podman", "Container platform to use: 'podman' or 'docker'")
 	buildCmd.Flags().StringVarP(&flags.Repository, "repository", "r", "localhost/bootc", "Base repository for tagging images")
+	buildCmd.Flags().StringVarP(&flags.WorkDir, "work-dir", "w", ".", "Working directory, containing the config files, the apps, and containers")
 	buildCmd.Flags().StringVarP(&flags.DefaultBaseImage, "default-base-image", "b", "", "Name of the default base image to use, from the versions file")
 	buildCmd.Flags().StringSliceVarP(&flags.Tags, "tag", "t", []string{"latest"}, "Tag(s) for the image, for pushing ('latest' is added automatically)")
 	buildCmd.Flags().StringSliceVarP(&flags.Archs, "arch", "a", []string{"amd64"}, "Architecture(s) for building the image")
-	buildCmd.Flags().StringSliceVarP(&flags.VersionsFiles, "versions-file", "f", []string{"versions.yaml"}, "Path(s) to the versions.yaml file(s)")
 
 	rootCmd.AddCommand(buildCmd)
 }
 
 type buildFlags struct {
+	WorkDir          string
 	DefaultBaseImage string
 	Push             bool
 	Platform         string
 	Repository       string
 	Tags             []string
 	Archs            []string
-	VersionsFiles    []string
 
-	Paths []string
+	Containers []string
 }
 
 func (f *buildFlags) Validate() error {
@@ -84,9 +83,10 @@ func (f *buildFlags) Validate() error {
 	if f.Repository == "" {
 		return errors.New("flag --repository must not be empty")
 	}
-	if len(f.VersionsFiles) == 0 {
-		return errors.New("at least one --versions-file flag must be specified")
+	if f.WorkDir == "" {
+		return errors.New("flag --work-dir must not be empty")
 	}
+
 	switch f.Platform {
 	case "podman", "docker":
 		// All good
@@ -113,50 +113,16 @@ func (f buildFlags) buildImageName(imageName string) string {
 	return path.Join(f.Repository, imageName)
 }
 
-func ProcessContainer(flags *buildFlags, basePath string, versions *Versions) error {
-	// Load the container.yaml
-	if basePath == "" {
-		return errors.New("path is empty")
-	}
-	basePath, err := filepath.Abs(basePath)
-	if err != nil {
-		return fmt.Errorf("failed to get container path: %w", err)
-	}
+func ProcessContainer(flags *buildFlags, containerName string, config *ConfigFile) error {
+	var result buildResult
 
-	result := buildResult{}
+	basePath := filepath.Join(config.Folders.ContainersDir, containerName)
+	fmt.Fprintf(os.Stderr, "Building container '%s': %s\n", containerName, basePath)
 
-	fmt.Fprintf(os.Stderr, "Building container: %s\n", basePath)
-
-	containerConfigFile, err := os.Open(filepath.Join(basePath, "container.yaml"))
-	if err != nil {
-		return fmt.Errorf("failed to open 'container.yaml' file: %w", err)
+	containerConfig, ok := config.containersMap[containerName]
+	if !ok {
+		return fmt.Errorf("container not found in configuration: %s", containerName)
 	}
-	defer containerConfigFile.Close()
-	containerConfig := NewContainerConfig()
-	err = yaml.NewDecoder(containerConfigFile).Decode(containerConfig)
-	if err != nil {
-		return fmt.Errorf("failed to load 'container.yaml' file: %w", err)
-	}
-
-	// Check if we have an override file
-	containerConfigOverrideFile, err := os.Open(filepath.Join(basePath, "container.override.yaml"))
-	if err == nil {
-		defer containerConfigOverrideFile.Close()
-		err = yaml.NewDecoder(containerConfigOverrideFile).Decode(containerConfig)
-		if err != nil {
-			return fmt.Errorf("failed to load 'container.override.yaml' file: %w", err)
-		}
-	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("failed to open 'container.override.yaml' file: %w", err)
-	}
-
-	// Validate the container config
-	err = containerConfig.Validate(basePath)
-	if err != nil {
-		return fmt.Errorf("container configuration is invalid: %w", err)
-	}
-
-	fmt.Fprintf(os.Stderr, "Loaded configuration: %s\n", containerConfig)
 
 	// Build the container
 	// Creates a manifest with a temporary tag
@@ -164,14 +130,35 @@ func ProcessContainer(flags *buildFlags, basePath string, versions *Versions) er
 
 	fmt.Fprintf(os.Stderr, "Building image: %s\n", manifestNameTag)
 
-	buildArgs, err := getBuildArgs(flags, containerConfig, versions, manifestNameTag)
+	// Get CLI flags
+	buildArgs, err := getBuildArgs(flags, containerConfig, config, manifestNameTag)
 	if err != nil {
 		return fmt.Errorf("failed to get build args: %w", err)
 	}
 
+	// Build the effective Containerfile, adding all apps
+	apps := make([]*App, len(containerConfig.Apps))
+	for i, app := range containerConfig.Apps {
+		appObj, ok := config.appsMap[app]
+		if !ok {
+			return fmt.Errorf("container references app '%s', which is not defined in config", app)
+		}
+		apps[i] = appObj
+	}
+	containerfile := Containerfile{
+		WorkDir:   flags.WorkDir,
+		Container: containerName,
+		Apps:      apps,
+	}
+	stdin, err := containerfile.BuildContainerfile()
+	if err != nil {
+		return fmt.Errorf("failed to build Containerfile: %w", err)
+	}
+
 	err = runProcess(runProcessOpts{
-		Name: flags.Platform,
-		Args: buildArgs,
+		Name:  flags.Platform,
+		Args:  buildArgs,
+		Stdin: stdin,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to build container: %w", err)
@@ -269,23 +256,23 @@ func (r buildResult) String() string {
 	return string(j)
 }
 
-func getBuildArgs(flags *buildFlags, containerConfig *ContainerConfig, versions *Versions, manifestNameTag string) ([]string, error) {
+func getBuildArgs(flags *buildFlags, containerConfig *ContainerConfig, config *ConfigFile, manifestNameTag string) ([]string, error) {
 	// Base image
 	baseImageName := containerConfig.BaseImage
 	if baseImageName == "default" {
 		baseImageName = flags.DefaultBaseImage
 	}
 
-	baseImageObj, ok := versions.BaseImages[baseImageName]
-	if !ok {
-		return nil, fmt.Errorf("base image '%s' is not defined in versions file", containerConfig.BaseImage)
-	}
-
+	// Get base image and add the digest
 	var baseImage string
-	if baseImageObj.LocalImage != "" {
-		baseImage = flags.buildImageNameTag(baseImageObj.LocalImage, "latest")
-	} else {
+	if baseImageObj, ok := config.BaseImages[baseImageName]; ok {
+		// Base image is defined in the config
 		baseImage = baseImageObj.Image + "@" + baseImageObj.Digest
+	} else if baseContainer, ok := config.containersMap[baseImageName]; ok && baseContainer != nil {
+		// Container built from this configuration too
+		baseImage = flags.buildImageNameTag(baseContainer.ImageName, "latest")
+	} else {
+		return nil, fmt.Errorf("base image '%s' does not have a match in the list of base images or in other containers", baseImageName)
 	}
 
 	// List of platforms
@@ -298,7 +285,7 @@ func getBuildArgs(flags *buildFlags, containerConfig *ContainerConfig, versions 
 	buildArgs := []string{
 		"build",
 		"--platform", strings.Join(platforms, ","),
-		"--file", containerConfig.Containerfile,
+		"--file", "-",
 		"--build-arg", "BASE_IMAGE=" + baseImage,
 	}
 
@@ -311,9 +298,9 @@ func getBuildArgs(flags *buildFlags, containerConfig *ContainerConfig, versions 
 
 	// Add build args
 	for _, appName := range containerConfig.Apps {
-		app, ok := versions.Apps[appName]
+		app, ok := config.appsMap[appName]
 		if !ok {
-			return nil, fmt.Errorf("app '%s' is not defined in versions file", appName)
+			return nil, fmt.Errorf("app '%s' is not defined in config file", appName)
 		}
 
 		if app.Version != "" {

@@ -106,9 +106,9 @@ jobs:
           set -euo pipefail
           .bin/tools \
             build \
-            ./el9/tailscale \
+            tailscale \
             --default-base-image "${{ matrix.baseImage }}" \
-            --versions-file versions.yaml \
+            --work-dir ./el9 \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
             --platform docker \
@@ -126,9 +126,9 @@ jobs:
           set -euo pipefail
           .bin/tools \
             build \
-            ./el9/base \
+            base \
             --default-base-image "${{ matrix.baseImage }}" \
-            --versions-file versions.yaml \
+            --work-dir ./el9 \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
             --platform docker \
@@ -146,9 +146,9 @@ jobs:
           set -euo pipefail
           .bin/tools \
             build \
-            ./el9/k3s \
+            k3s \
             --default-base-image "${{ matrix.baseImage }}" \
-            --versions-file versions.yaml \
+            --work-dir ./el9 \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
             --platform docker \
@@ -166,9 +166,9 @@ jobs:
           set -euo pipefail
           .bin/tools \
             build \
-            ./el9/monitoring \
+            monitoring \
             --default-base-image "${{ matrix.baseImage }}" \
-            --versions-file versions.yaml \
+            --work-dir ./el9 \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
             --platform docker \
@@ -186,9 +186,9 @@ jobs:
           set -euo pipefail
           .bin/tools \
             build \
-            ./el9/zfs \
+            zfs \
             --default-base-image "${{ matrix.baseImage }}" \
-            --versions-file versions.yaml \
+            --work-dir ./el9 \
             --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
             --platform docker \
@@ -206,9 +206,9 @@ jobs:
           set -euo pipefail
           .bin/tools \
             build \
-            ./el9/monitoring-zfs \
+            monitoring-zfs \
             --default-base-image "${{ matrix.baseImage }}" \
-            --versions-file versions.yaml \
+            --work-dir ./el9 \
             --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
             --platform docker \

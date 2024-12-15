@@ -1,6 +1,0 @@
-imageName: 'base'
-baseImage: 'tailscale' # ../tailscale
-apps:
-  - 'tailscale'
-  - 'restic'
-  - 'gotop'

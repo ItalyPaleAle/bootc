@@ -42,7 +42,7 @@ jobs:
 
           .bin/tools \
             update-versions \
-            --versions-file versions.yaml \
+            --work-dir el9 \
               | tee .out/updated.md
 
           if git diff; then

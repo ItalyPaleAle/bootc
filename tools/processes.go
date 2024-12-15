@@ -13,6 +13,7 @@ type runProcessOpts struct {
 	Name      string
 	Args      []string
 	Stdout    io.Writer
+	Stdin     io.Reader
 	NoConsole bool
 }
 
@@ -33,6 +34,10 @@ func runProcess(opts runProcessOpts) error {
 		// Redirect all output to stderr too in addition to what the user requested
 		cmd.Stdout = io.MultiWriter(os.Stderr, opts.Stdout)
 		cmd.Stderr = os.Stderr
+	}
+
+	if opts.Stdin != nil {
+		cmd.Stdin = opts.Stdin
 	}
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{

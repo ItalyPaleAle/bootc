@@ -1,4 +1,5 @@
 imageName: 'monitoring-zfs'
-baseImage: 'zfs'
+baseImage: 'base' # ../base
 apps:
   - 'alloy'
+  - 'zfs'

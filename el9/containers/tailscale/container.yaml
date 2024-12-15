@@ -1,4 +1,4 @@
 imageName: 'tailscale'
-baseImage: 'default'
+baseImage: 'base' # ../base
 apps:
   - 'tailscale'
