@@ -17,6 +17,8 @@ containers:
   - monitoring
   - monitoring-zfs
   - k3s
+  - server
+  - server-zfs
 apps:
   - alloy
   - gotop
