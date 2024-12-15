@@ -1,5 +1,4 @@
-# Base image
-ARG BASE_IMAGE=quay.io/centos-bootc/centos-bootc:stream9
+ARG BASE_IMAGE
 
 FROM ${BASE_IMAGE}
 
