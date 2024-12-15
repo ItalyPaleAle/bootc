@@ -52,32 +52,9 @@ apps:
         curl -sL "https://github.com/k3s-io/k3s/releases/download/${VERSION}/sha256sum-arm64.txt" | grep "k3s-arm64$"
   restic:
     version: 0.17.3
-    checksums: |
-      bf0dd73edfae531c24070e2e7833938613f7b179ed165e6b681098edfdf286c8  restic-0.17.3.tar.gz
-      55e81a17232311f77e0098c95e015b1f60fbd2a52e6ccdb87145893610618e52  restic_0.17.3_aix_ppc64.bz2
-      707b9e93556f924d673a3969c4b8783e54c352f637c896d6419b5897dcb492b5  restic_0.17.3_darwin_amd64.bz2
-      18aac652463afe772700f568e52e6416b3940e366472c6c47fb1480dfb1c303c  restic_0.17.3_darwin_arm64.bz2
-      99443e80b6b41d9a77c692b07fadcd808e6596c984c1ea5b3bf075a532c72104  restic_0.17.3_freebsd_386.bz2
-      95db6b1a9707a1e18fab347ffc43a2148a640cc0d9845dbe5be7d9785fc5f891  restic_0.17.3_freebsd_amd64.bz2
-      8efc30108d08357113913261597d10e01a222ad4e7dcb7469cd5a9ced9c94ac6  restic_0.17.3_freebsd_arm.bz2
-      23b24ca4633f6ec60d13bbaaf77ce77f50c5033d3356a1b4f36e0a76647de20b  restic_0.17.3_linux_386.bz2
+    checksums: |-
       5097faeda6aa13167aae6e36efdba636637f8741fed89bbf015678334632d4d3  restic_0.17.3_linux_amd64.bz2
-      a1fd2e88c2008998cb3ba1f99fe8405494f2802ee76f027db6c8f2a394f04288  restic_0.17.3_linux_arm.bz2
       db27b803534d301cef30577468cf61cb2e242165b8cd6d8cd6efd7001be2e557  restic_0.17.3_linux_arm64.bz2
-      ba933d655ab5b4e2a0ec21c70eb9a5027a80629f9b27345425537dbd05cb0647  restic_0.17.3_linux_mips.bz2
-      79eb553bf170be2e77c2b99b253ada6e9dde57243cb3efce8eaf9df20ac9b407  restic_0.17.3_linux_mips64.bz2
-      5e2fd089f0240993583e43cede0838557f2c207afa20c9761a09210370d28c25  restic_0.17.3_linux_mips64le.bz2
-      dfaa3f255d66e5c61bdbf94ebf08e8f89fab05bed58a945507ea1bd4243c4abe  restic_0.17.3_linux_mipsle.bz2
-      7977c808f720673e11e1b6b55b5719c0f705dc84c261fa65bc6c5c73842d0dd2  restic_0.17.3_linux_ppc64le.bz2
-      363b0208f5dfd648ea03131554be0f8f2d31d110f752ff39e77300c015798205  restic_0.17.3_linux_riscv64.bz2
-      20a4bd7f28f0fb0fe91dbe1f102da2dba35b4bd30258948787f17f52ac1bf74e  restic_0.17.3_linux_s390x.bz2
-      d2b73577c31e885df2aae45824d1bbfee2538667146787f87f0289d704ebf04a  restic_0.17.3_netbsd_386.bz2
-      7e9759deb578f149d7b38eb4d0f2326d8a03c82def84806a8fc1f0eac7f1a134  restic_0.17.3_netbsd_amd64.bz2
-      15d18677bc124c88fcd77717538006900faae8ebbda10b2ee0a40e2e4f4b164e  restic_0.17.3_openbsd_386.bz2
-      05e053940e2aa2f3fa78f1f27e793b6a6b41f020bf9304d9f88969cbb494cef7  restic_0.17.3_openbsd_amd64.bz2
-      fd0bb05bdfecb58264c7c987dbf0cdcace11937a705bc799ce992348f76c86a6  restic_0.17.3_solaris_amd64.bz2
-      045c160ef53d1c32d6c5cf60bc3805026be807ddbfea1d9dbc90e1c5fdf94776  restic_0.17.3_windows_386.zip
-      fcf5875de5a995100e8a2ecad5b0ada86b47155796bece87a425a251288c800f  restic_0.17.3_windows_amd64.zi
     cmds:
       updateVersion: |
         curl -Ls "https://api.github.com/repos/restic/restic/releases/latest" \
@@ -86,7 +63,8 @@ apps:
       updateChecksums: |
         URL=$(curl -sL https://api.github.com/repos/restic/restic/releases/latest \
           | jq -r '.assets[] | select(.name == "SHA256SUMS") | .browser_download_url')
-        curl -sL $URL
+        curl -sL $URL \
+          | grep "linux_arm64\|linux_amd64"
   tailscale:
     version: 1.78.1
     cmds:
