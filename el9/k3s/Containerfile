@@ -1,0 +1,126 @@
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE}
+
+ARG VERSION_K3S
+ARG CHECKSUMS_K3S
+
+RUN <<EOT
+  set -euxo pipefail
+
+  # Set up arch
+  ARCH=$(uname -m)
+  case $ARCH in
+    amd64) SUFFIX="" ;;
+    x86_64) SUFFIX="" ;;
+    arm64) SUFFIX=-arm64 ;;
+    aarch64) SUFFIX=-arm64 ;;
+    *) echo "Unsupported architecture $ARCH"; exit 1 ;;
+  esac
+
+  # Download binary
+  echo "Downloading https://github.com/k3s-io/k3s/releases/download/v${VERSION_K3S}/k3s${SUFFIX}"
+  curl -o "k3s${SUFFIX}" -sfL "https://github.com/k3s-io/k3s/releases/download/v${VERSION_K3S}/k3s${SUFFIX}"
+  sha256sum "k3s${SUFFIX}"
+  echo "${CHECKSUMS_K3S}" | sha256sum --check --ignore-missing --status
+  mv "k3s${SUFFIX}" /usr/local/bin/k3s
+  chmod 755 /usr/local/bin/k3s
+  chown root:root /usr/local/bin/k3s
+
+  # Create config folder and files
+  mkdir -p /etc/rancher/k3s/config
+  touch /etc/rancher/k3s/config/k3s-server.yaml
+  chmod 0600  /etc/rancher/k3s/config/k3s-server.yaml
+  touch /etc/rancher/k3s/config/k3s-agent.yaml
+  chmod 0600  /etc/rancher/k3s/config/k3s-agent.yaml
+
+  # Install SELinux policies
+  # We install these from the RPM repositories
+  cat << EOF > /etc/yum.repos.d/rancher-k3s-common.repo
+[rancher-k3s-common-stable]
+name=Rancher K3s Common (stable)
+baseurl=https://rpm.rancher.io/k3s/stable/common/centos/9/noarch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=https://rpm.rancher.io/public.key
+EOF
+  dnf install -y k3s-selinux container-selinux
+  dnf clean all
+
+  # Create systemd units and env files
+  # Server
+  cat << EOF > /etc/systemd/system/k3s-server.service
+[Unit]
+Description=K3s Server node
+Documentation=https://k3s.io
+Wants=network-online.target
+After=network-online.target
+[Install]
+WantedBy=multi-user.target
+[Service]
+Type=notify
+EnvironmentFile=-/etc/default/%N
+EnvironmentFile=-/etc/sysconfig/%N
+EnvironmentFile=-/etc/systemd/system/k3s-server.service.env
+KillMode=process
+Delegate=yes
+# Having non-zero Limit*s causes performance problems due to accounting overhead
+# in the kernel. We recommend using cgroups to do container-local accounting.
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5s
+ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service 2>/dev/null'
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStartPre=-/sbin/modprobe overlay
+ExecStart=/usr/local/bin/k3s server --config /etc/rancher/k3s/config/k3s-server.yaml
+EOF
+  touch /etc/systemd/system/k3s-server.service.env
+  chmod 0600 /etc/systemd/system/k3s-server.service.env
+  restorecon -R -i /etc/systemd/system/k3s-server.service || true
+  restorecon -R -i /etc/systemd/system/k3s-server.service || true
+
+  # Agent
+  cat << EOF > /etc/systemd/system/k3s-agent.service
+[Unit]
+Description=K3s Agent node
+Documentation=https://k3s.io
+Wants=network-online.target
+After=network-online.target
+[Install]
+WantedBy=multi-user.target
+[Service]
+Type=notify
+EnvironmentFile=-/etc/default/%N
+EnvironmentFile=-/etc/sysconfig/%N
+EnvironmentFile=-/etc/systemd/system/k3s-agent.service.env
+KillMode=process
+Delegate=yes
+# Having non-zero Limit*s causes performance problems due to accounting overhead
+# in the kernel. We recommend using cgroups to do container-local accounting.
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5s
+ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service 2>/dev/null'
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStartPre=-/sbin/modprobe overlay
+ExecStart=/usr/local/bin/k3s agent --config /etc/rancher/k3s/config/k3s-agent.yaml
+EOF
+  touch /etc/systemd/system/k3s-agent.service.env
+  chmod 0600 /etc/systemd/system/k3s-agent.service.env
+  restorecon -R -i /etc/systemd/system/k3s-agent.service || true
+  restorecon -R -i /etc/systemd/system/k3s-agent.service || true
+
+  # Create symlinks
+  for cmd in kubectl crictl ctr; do
+    ln -sf k3s /usr/local/bin/${cmd}
+  done
+EOT
