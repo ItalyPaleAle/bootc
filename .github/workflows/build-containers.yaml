@@ -140,6 +140,26 @@ jobs:
 
       # Build and push Docker image for monitoring
       # For linux/amd64 and linux/arm64
+      - name: "Build and push Docker image: k3s"
+        id: build-and-push-k3s
+        run: |
+          set -euo pipefail
+          .bin/tools \
+            build \
+            ./el9/k3s \
+            --default-base-image "${{ matrix.baseImage }}" \
+            --versions-file versions.yaml \
+            --arch amd64,arm64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
+            --platform docker \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/k3s.json
+          echo "ImageName=$(jq -r '.imageName' .out/k3s.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/k3s.json)" >> "$GITHUB_OUTPUT"
+
+      # Build and push Docker image for monitoring
+      # For linux/amd64 and linux/arm64
       - name: "Build and push Docker image: monitoring"
         id: build-and-push-monitoring
         run: |
@@ -210,6 +230,13 @@ jobs:
         with:
           subject-name: ${{ steps.build-and-push-base.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-base.outputs.Digest }}
+          push-to-registry: true
+
+      - name: 'Container image attestation: k3s'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.build-and-push-k3s.outputs.ImageName }}
+          subject-digest: ${{ steps.build-and-push-k3s.outputs.Digest }}
           push-to-registry: true
 
       - name: 'Container image attestation: monitoring'

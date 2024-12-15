@@ -4,6 +4,7 @@ Custom images for CentOS Stream that can be used with bootc. Currently supports 
 
 - [`tailscale`](#tailscale-image): Includes Tailscale
 - [`base`](#base-image): Includes some basic system tools (built on top of `tailscale`)
+- [`k3s`](#k3s-image): Includes K3s (built on top of `base`)
 - [`zfs`](#zfs-image): Includes ZFS as a kernel module (built on top of `base`)
 - [`monitoring`](#monitoring-image): Includes Grafana Alloy (built on top of `base`)
 - [`monitoring-zfs`](#monitoring-zfs-image): Includes Grafana Alloy (built on top of `zfs`)
@@ -44,6 +45,35 @@ ghcr.io/italypaleale/bootc/alma-linux-9/base:latest
 ```
 
 [Source](./el9/base/)
+
+## `k3s` image
+
+Includes:
+
+- Everything in the [`base` image](#base-image)
+- [K3s](https://k3s.io/), available as server or agent only
+
+Image:
+
+```text
+ghcr.io/italypaleale/bootc/centos-stream-9/k3s:latest
+ghcr.io/italypaleale/bootc/alma-linux-9/k3s:latest
+```
+
+[Source](./el9/k3s/)
+
+### Using K3s
+
+The image contains K3s pre-installed at the latest version, but it is not started automaticaly. K3s can be configured using the [YAML config file format](https://docs.k3s.io/installation/configuration) or by setting environmental variables.
+
+- For a K3s server (which normally starts an agent too, unless configured otherwise):
+   1. Configure K3s by editing the file `/etc/rancher/k3s/config/k3s-server.yaml`
+   2. Optionally set environmental variables in the file `/etc/systemd/system/k3s-server.service.env`
+   3. Enable and start the systemd unit with: `systemctl enable --now k3s-server`
+- For a K3s agent only:
+   1. Configure K3s by editing the file `/etc/rancher/k3s/config/k3s-agent.yaml`
+   2. Optionally set environmental variables in the file `/etc/systemd/system/k3s-agent.service.env`
+   3. Enable and start the systemd unit with: `systemctl enable --now k3s-agent`
 
 ## `zfs` image
 
