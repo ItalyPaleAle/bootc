@@ -17,8 +17,6 @@ Images are published on GitHub Packages and available for linux/amd64 and linux/
 
 Includes:
 
-- [restic](https://github.com/restic/restic)
-- [gotop](https://github.com/xxxserxxx/gotop)
 - Utilities: `screen`, `pv`, `sqlite`, `jq`
 
 Image:

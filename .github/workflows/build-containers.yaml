@@ -98,9 +98,9 @@ jobs:
             -o ../.bin/tools
         working-directory: ./tools
 
-      # Build and push Docker image for tailscale
+      # Build and push container image for tailscale
       # For linux/amd64 and linux/arm64
-      - name: "Build and push Docker image: tailscale"
+      - name: "Build and push container image: tailscale"
         id: build-and-push-tailscale
         run: |
           set -euo pipefail
@@ -118,9 +118,9 @@ jobs:
           echo "ImageName=$(jq -r '.imageName' .out/tailscale.json)" >> "$GITHUB_OUTPUT"
           echo "Digest=$(jq -r '.digest' .out/tailscale.json)" >> "$GITHUB_OUTPUT"
 
-      # Build and push Docker image for base
+      # Build and push container image for base
       # For linux/amd64 and linux/arm64
-      - name: "Build and push Docker image: base"
+      - name: "Build and push container image: base"
         id: build-and-push-base
         run: |
           set -euo pipefail
@@ -138,9 +138,9 @@ jobs:
           echo "ImageName=$(jq -r '.imageName' .out/base.json)" >> "$GITHUB_OUTPUT"
           echo "Digest=$(jq -r '.digest' .out/base.json)" >> "$GITHUB_OUTPUT"
 
-      # Build and push Docker image for monitoring
+      # Build and push container image for monitoring
       # For linux/amd64 and linux/arm64
-      - name: "Build and push Docker image: k3s"
+      - name: "Build and push container image: k3s"
         id: build-and-push-k3s
         run: |
           set -euo pipefail
@@ -158,9 +158,9 @@ jobs:
           echo "ImageName=$(jq -r '.imageName' .out/k3s.json)" >> "$GITHUB_OUTPUT"
           echo "Digest=$(jq -r '.digest' .out/k3s.json)" >> "$GITHUB_OUTPUT"
 
-      # Build and push Docker image for monitoring
+      # Build and push container image for monitoring
       # For linux/amd64 and linux/arm64
-      - name: "Build and push Docker image: monitoring"
+      - name: "Build and push container image: monitoring"
         id: build-and-push-monitoring
         run: |
           set -euo pipefail
@@ -178,9 +178,9 @@ jobs:
           echo "ImageName=$(jq -r '.imageName' .out/monitoring.json)" >> "$GITHUB_OUTPUT"
           echo "Digest=$(jq -r '.digest' .out/monitoring.json)" >> "$GITHUB_OUTPUT"
 
-      # Build and push Docker image for zfs
+      # Build and push container image for zfs
       # For linux/amd64
-      - name: "Build and push Docker image: zfs"
+      - name: "Build and push container image: zfs"
         id: build-and-push-zfs
         run: |
           set -euo pipefail
@@ -198,9 +198,9 @@ jobs:
           echo "ImageName=$(jq -r '.imageName' .out/zfs.json)" >> "$GITHUB_OUTPUT"
           echo "Digest=$(jq -r '.digest' .out/zfs.json)" >> "$GITHUB_OUTPUT"
 
-      # Build and push Docker image for monitoring-zfs
+      # Build and push container image for monitoring-zfs
       # For linux/amd64
-      - name: "Build and push Docker image: monitoring-zfs"
+      - name: "Build and push container image: monitoring-zfs"
         id: build-and-push-monitoring-zfs
         run: |
           set -euo pipefail
@@ -217,6 +217,46 @@ jobs:
               | tee .out/monitoring-zfs.json
           echo "ImageName=$(jq -r '.imageName' .out/monitoring-zfs.json)" >> "$GITHUB_OUTPUT"
           echo "Digest=$(jq -r '.digest' .out/monitoring-zfs.json)" >> "$GITHUB_OUTPUT"
+
+      # Build and push container image for server
+      # For linux/amd64 and linux/arm64
+      - name: "Build and push container image: server"
+        id: build-and-push-server
+        run: |
+          set -euo pipefail
+          .bin/tools \
+            build \
+            server \
+            --default-base-image "${{ matrix.baseImage }}" \
+            --work-dir ./el9 \
+            --arch amd64,arm64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
+            --platform docker \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/server.json
+          echo "ImageName=$(jq -r '.imageName' .out/server.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/server.json)" >> "$GITHUB_OUTPUT"
+
+      # Build and push container image for server-zfs
+      # For linux/amd64
+      - name: "Build and push container image: server-zfs"
+        id: build-and-push-server-zfs
+        run: |
+          set -euo pipefail
+          .bin/tools \
+            build \
+            server-zfs \
+            --default-base-image "${{ matrix.baseImage }}" \
+            --work-dir ./el9 \
+            --arch amd64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
+            --platform docker \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/server-zfs.json
+          echo "ImageName=$(jq -r '.imageName' .out/server-zfs.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/server-zfs.json)" >> "$GITHUB_OUTPUT"
 
       - name: 'Container image attestation: tailscale'
         uses: actions/attest-build-provenance@v1
@@ -258,4 +298,18 @@ jobs:
         with:
           subject-name: ${{ steps.build-and-push-monitoring-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-monitoring-zfs.outputs.Digest }}
+          push-to-registry: true
+
+      - name: 'Container image attestation: server'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.build-and-push-server.outputs.ImageName }}
+          subject-digest: ${{ steps.build-and-push-server.outputs.Digest }}
+          push-to-registry: true
+
+      - name: 'Container image attestation: server-zfs'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.build-and-push-server-zfs.outputs.ImageName }}
+          subject-digest: ${{ steps.build-and-push-server-zfs.outputs.Digest }}
           push-to-registry: true
