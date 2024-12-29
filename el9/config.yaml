@@ -19,8 +19,10 @@ containers:
   - k3s
   - server
   - server-zfs
+  - server-atlas
 apps:
   - alloy
+  - cloudflared
   - gotop
   - k3s
   - restic

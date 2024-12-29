@@ -1,0 +1,10 @@
+ARG VERSION_CLOUDFLARED
+
+# Add cloudflared
+RUN <<EOT
+  set -euxo pipefail
+
+  dnf config-manager --add-repo https://pkg.cloudflare.com/cloudflared-ascii.repo
+  dnf install -y cloudflared-${VERSION_CLOUDFLARED}
+  dnf clean all
+EOT
