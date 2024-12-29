@@ -258,6 +258,26 @@ jobs:
           echo "ImageName=$(jq -r '.imageName' .out/server-zfs.json)" >> "$GITHUB_OUTPUT"
           echo "Digest=$(jq -r '.digest' .out/server-zfs.json)" >> "$GITHUB_OUTPUT"
 
+      # Build and push container image for server-atlas
+      # For linux/amd64
+      - name: "Build and push container image: server-atlas"
+        id: build-and-push-server-atlas
+        run: |
+          set -euo pipefail
+          .bin/tools \
+            build \
+            server-atlas \
+            --default-base-image "${{ matrix.baseImage }}" \
+            --work-dir ./el9 \
+            --arch amd64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
+            --platform docker \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/server-atlas.json
+          echo "ImageName=$(jq -r '.imageName' .out/server-atlas.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/server-atlas.json)" >> "$GITHUB_OUTPUT"
+
       - name: 'Container image attestation: tailscale'
         uses: actions/attest-build-provenance@v1
         with:
@@ -312,4 +332,11 @@ jobs:
         with:
           subject-name: ${{ steps.build-and-push-server-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-zfs.outputs.Digest }}
+          push-to-registry: true
+
+      - name: 'Container image attestation: server-atlas'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.build-and-push-server-atlas.outputs.ImageName }}
+          subject-digest: ${{ steps.build-and-push-server-atlas.outputs.Digest }}
           push-to-registry: true
