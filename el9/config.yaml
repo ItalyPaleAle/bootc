@@ -6,7 +6,7 @@ baseImages:
   centos-stream-9:
     image: quay.io/centos-bootc/centos-bootc
     tag: stream9
-    digest: sha256:1a8f9d760efc7638fbcbfee44ce13a91d8a5fb1db150955ba82a5f3e05785c26
+    digest: sha256:054219ab020cfaff09ec2d1c287e7f399edbb55ade2eefa97b41ca4e6cd37ad5
 folders:
   apps: apps
   containers: containers
