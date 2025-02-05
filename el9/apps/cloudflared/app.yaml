@@ -1,6 +1,6 @@
 name: cloudflared
 containerfile: Containerfile
-version: 2025.1.1
+version: 2025.2.0
 cmds:
   updateVersion: |
     curl -Ls "https://api.github.com/repos/cloudflare/cloudflared/releases/latest" \
