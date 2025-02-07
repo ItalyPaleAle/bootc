@@ -258,6 +258,26 @@ jobs:
           echo "ImageName=$(jq -r '.imageName' .out/server-zfs.json)" >> "$GITHUB_OUTPUT"
           echo "Digest=$(jq -r '.digest' .out/server-zfs.json)" >> "$GITHUB_OUTPUT"
 
+      # Build and push container image for server-worker
+      # For linux/amd64 and linux/arm64
+      - name: "Build and push container image: server-worker"
+        id: build-and-push-server-worker
+        run: |
+          set -euo pipefail
+          .bin/tools \
+            build \
+            server-worker \
+            --default-base-image "${{ matrix.baseImage }}" \
+            --work-dir ./el9 \
+            --arch amd64,arm64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
+            --platform docker \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/server-worker.json
+          echo "ImageName=$(jq -r '.imageName' .out/server-worker.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/server-worker.json)" >> "$GITHUB_OUTPUT"
+
       # Build and push container image for server-atlas
       # For linux/amd64
       - name: "Build and push container image: server-atlas"
@@ -332,6 +352,13 @@ jobs:
         with:
           subject-name: ${{ steps.build-and-push-server-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-zfs.outputs.Digest }}
+          push-to-registry: true
+
+      - name: 'Container image attestation: server-worker'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.build-and-push-server-worker.outputs.ImageName }}
+          subject-digest: ${{ steps.build-and-push-server-worker.outputs.Digest }}
           push-to-registry: true
 
       - name: 'Container image attestation: server-atlas'

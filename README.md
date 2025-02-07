@@ -17,7 +17,7 @@ Images are published on GitHub Packages and available for linux/amd64 and linux/
 
 Includes:
 
-- Utilities: `screen`, `pv`, `sqlite`, `jq`
+- Utilities: `screen`, `pv`, `sqlite`, `jq`, `tmux`, `tree`, `rsync`
 
 Image:
 

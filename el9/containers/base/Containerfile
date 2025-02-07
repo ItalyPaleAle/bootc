@@ -11,9 +11,9 @@ RUN <<EOT
   # See: https://bugzilla.redhat.com/show_bug.cgi?id=2219796
   sed -i 's/$releasever/9/g' /etc/yum.repos.d/epel*.repo
 
-  # Add: screen, pv, sqlite, tmux, jq, rsync
+  # Add: screen, pv, sqlite, tmux, jq, rsync, tree
   dnf install -y --enablerepo=epel \
-    screen pv sqlite tmux jq rsync
+    screen pv sqlite tmux jq rsync tree
 
   # Clean-up
   dnf clean all
