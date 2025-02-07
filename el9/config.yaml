@@ -20,6 +20,7 @@ containers:
   - server
   - server-zfs
   - server-atlas
+  - server-worker
 apps:
   - alloy
   - cloudflared
