@@ -10,6 +10,7 @@ RUN <<EOT
     curl -LO "https://github.com/xxxserxxx/gotop/releases/download/v${VERSION_GOTOP}/gotop_v${VERSION_GOTOP}_linux_amd64.rpm"
     echo "${CHECKSUMS_GOTOP}" | sha256sum --check --ignore-missing --status
     dnf install -y "gotop_v${VERSION_GOTOP}_linux_amd64.rpm"
+    rm "gotop_v${VERSION_GOTOP}_linux_amd64.rpm"
   fi
 
   # Clean-up

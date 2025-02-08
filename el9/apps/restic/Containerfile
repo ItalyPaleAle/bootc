@@ -16,6 +16,7 @@ RUN <<EOT
   curl -sLO "https://github.com/restic/restic/releases/download/v${VERSION_RESTIC}/restic_${VERSION_RESTIC}_linux_${ARCH}.bz2"
   echo "${CHECKSUMS_RESTIC}" | sha256sum --check --ignore-missing --status
   bunzip2 -c "restic_${VERSION_RESTIC}_linux_${ARCH}.bz2" > /usr/local/bin/restic
+  rm "restic_${VERSION_RESTIC}_linux_${ARCH}.bz2"
   chmod +x /usr/local/bin/restic
   /usr/local/bin/restic version
 EOT
