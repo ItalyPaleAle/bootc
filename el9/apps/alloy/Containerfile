@@ -12,4 +12,17 @@ RUN <<EOT
   dnf install -y prometheus-podman-exporter
 
   dnf clean all
+
+  # Fix permissions for Alloy
+  mkdir -p /var/lib/alloy /var/lib/alloy/data /etc/systemd/system/alloy.service.d
+  chown alloy:alloy /var/lib/alloy /var/lib/alloy/data
+  chmod 770 /var/lib/alloy /var/lib/alloy/data
+  chown root:alloy /etc/alloy
+  chmod 770 /etc/alloy
+
+  # Disable telemetry for alloy
+  echo 'CUSTOM_ARGS="--disable-reporting"' > /etc/sysconfig/alloy
+
+  # Configure prometheus-podman-exporter
+  echo 'PODMAN_EXPORTER_OPTS="--collector.enable-all --web.listen-address=127.0.0.1:9855"' > /etc/sysconfig/prometheus-podman-exporter
 EOT
