@@ -15,7 +15,7 @@ RUN <<EOT
 
   # Fix permissions for Alloy
   mkdir -p /var/lib/alloy /var/lib/alloy/data /etc/systemd/system/alloy.service.d
-  chown alloy:alloy /var/lib/alloy /var/lib/alloy/data
+  chown -R alloy:alloy /var/lib/alloy /var/lib/alloy/data
   chmod 770 /var/lib/alloy /var/lib/alloy/data
   chown root:alloy /etc/alloy
   chmod 770 /etc/alloy
