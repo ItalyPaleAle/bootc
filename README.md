@@ -1,6 +1,12 @@
-# bootc images for CentOS Stream
+# bootc images for Enterprise Linux
 
-Custom images for CentOS Stream that can be used with bootc. Currently supports CentOS Stream 9 and Alma Linux 9.
+Custom images for Enterprise Linux that can be used with bootc. Currently supports:
+
+- **CentOS Stream 9**: Published on GitHub Packages
+- **Alma Linux 9**: Published on GitHub Packages
+- **Red Hat Enterprise Linux 9**: [See instructions](#use-with-rhel)
+
+Images:
 
 - [`base`](#base-image): Includes some basic system tools
 - [`tailscale`](#tailscale-image): Includes Tailscale (built on top of `base`)
@@ -9,9 +15,9 @@ Custom images for CentOS Stream that can be used with bootc. Currently supports 
 - [`monitoring`](#monitoring-image): Includes Grafana Alloy (built on top of `base`)
 - [`monitoring-zfs`](#monitoring-zfs-image): Includes Grafana Alloy (built on top of `zfs`)
 
-These images are built using GitHub Actions every Monday and Friday, from the upstream images of CentOS Stream.
+These images are built using GitHub Actions at least bi-weekly.
 
-Images are published on GitHub Packages and available for linux/amd64 and linux/arm64 (except ZFS).
+Images are published on GitHub Packages and available for **linux/amd64** and **linux/arm64** (except ZFS).
 
 ## `base` image
 
