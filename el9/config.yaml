@@ -28,4 +28,5 @@ apps:
   - k3s
   - restic
   - tailscale
+  - yq
   - zfs

@@ -1,3 +1,4 @@
 imageName: 'base'
 baseImage: 'default'
-apps: []
+apps:
+  - 'yq'

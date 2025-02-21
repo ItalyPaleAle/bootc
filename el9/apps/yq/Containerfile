@@ -1,0 +1,21 @@
+ARG VERSION_YQ
+ARG CHECKSUMS_YQ
+
+RUN <<EOT
+  set -euxo pipefail
+
+  # Add yq, fetching the pre-compiled binary from the official GitHub repository
+  # The RPM that is shipped in the official repositories is often very outdated
+  ARCH=$(uname -m) 
+  case $ARCH in
+    x86_64) ARCH="amd64" ;;
+    aarch64) ARCH="arm64" ;;
+  esac
+
+  # Download the binary
+  curl -sLO "https://github.com/mikefarah/yq/releases/download/v${VERSION_YQ}/yq_linux_${ARCH}"
+  echo "${CHECKSUMS_YQ}" | sha256sum --check --ignore-missing --status
+  mv "yq_linux_${ARCH}" /usr/local/bin/yq
+  chmod +x /usr/local/bin/yq
+  /usr/local/bin/yq --version
+EOT

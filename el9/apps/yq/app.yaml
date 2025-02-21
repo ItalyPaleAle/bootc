@@ -1,0 +1,19 @@
+name: yq
+version: 4.45.1
+checksums: |-
+  ceea73d4c86f2e5c91926ee0639157121f5360da42beeb8357783d79c2cc6a1d yq_linux_arm64
+  654d2943ca1d3be2024089eb4f270f4070f491a0610481d128509b2834870049 yq_linux_amd64
+cmds:
+  updateVersion: |
+    curl -Ls "https://api.github.com/repos/mikefarah/yq/releases/latest" \
+      | jq '.tag_name' -r \
+      | cut -c 2-
+  updateChecksums: |-
+    URL=$(curl -sL https://api.github.com/repos/mikefarah/yq/releases/latest \
+      | jq -r '.assets[] | select(.name == "checksums") | .browser_download_url')
+    # See: https://github.com/mikefarah/yq/blob/master/scripts/extract-checksum.sh
+    curl -sL $URL \
+      | grep "yq_linux_amd64 \|yq_linux_arm64 " \
+      | sed 's/  /\t/g' \
+      | cut -f1,19 \
+      | awk '{ print $2 " " $1}'
