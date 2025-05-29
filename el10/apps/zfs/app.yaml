@@ -1,0 +1,16 @@
+name: zfs
+containerfile: Containerfile
+builderContainerfiles:
+  - Containerfile-builder
+version: 2.3.2
+checksums: 80da628a9543ec3355bf410617450e167706948ceb287541455a1b8d87b8758a  zfs-2.3.2.tar.gz
+cmds:
+  updateVersion: |
+    curl -Ls "https://api.github.com/repos/openzfs/zfs/releases/latest" \
+      | jq '.tag_name' -r \
+      | cut -c 5-
+  updateChecksums: |
+    VERSION=$(curl -Ls "https://api.github.com/repos/openzfs/zfs/releases/latest" \
+      | jq '.tag_name' -r)
+    curl -sL "https://github.com/openzfs/zfs/releases/download/${VERSION}/${VERSION}.sha256.asc" \
+      | grep ${VERSION}.tar.gz

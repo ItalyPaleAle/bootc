@@ -1,0 +1,51 @@
+ARG BASE_IMAGE
+
+# Using https://openzfs.github.io/openzfs-docs/Developer%20Resources/Custom%20Packages.html
+FROM ${BASE_IMAGE} AS builder-zfs
+
+ARG VERSION_ZFS
+ARG CHECKSUMS_ZFS
+
+# Install build depdendencies
+RUN <<EOT
+  set -euxo pipefail
+
+  # Get the kernel version
+  # We can't use `uname -r` as it will pick up the host kernel version
+  VERSION_KERNEL=$(rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')
+
+  dnf install -y \
+    jq make autoconf automake gcc libtool rpm-build libblkid-devel \
+    libuuid-devel libudev-devel openssl-devel zlib-devel libaio-devel libattr-devel elfutils-libelf-devel \
+    kernel-${VERSION_KERNEL} kernel-modules-${VERSION_KERNEL} kernel-devel-${VERSION_KERNEL} \
+    python3 python3-devel python3-setuptools python3-packaging python3-cffi libffi-devel git libcurl-devel
+EOT
+
+RUN <<EOT
+  set -euxo pipefail
+
+  CRB_REPO_NAME=""
+  case $(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"') in
+    rhel) CRB_REPO_NAME="codeready-builder-for-rhel-9-$(arch)-rpms" ;;
+    *) CRB_REPO_NAME="crb" ;;
+  esac
+  dnf install -y --enablerepo=epel --enablerepo=$CRB_REPO_NAME \
+    dkms libtirpc-devel ncompress
+EOT
+
+RUN <<EOT
+  set -euxo pipefail
+
+  VERSION_KERNEL=$(rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')
+
+  curl -L -O https://github.com/openzfs/zfs/releases/download/zfs-${VERSION_ZFS}/zfs-${VERSION_ZFS}.tar.gz
+  echo "${CHECKSUMS_ZFS}" | sha256sum --check --status
+
+  tar xzf zfs-${VERSION_ZFS}.tar.gz
+  mv zfs-${VERSION_ZFS} zfs
+
+  cd /zfs
+  ./configure -with-linux=/usr/src/kernels/${VERSION_KERNEL}/ -with-linux-obj=/usr/src/kernels/${VERSION_KERNEL}/
+  make -j1 rpm-utils rpm-kmod
+  ls -al /zfs/*.rpm
+EOT

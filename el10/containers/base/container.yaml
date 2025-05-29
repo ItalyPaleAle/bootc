@@ -1,0 +1,4 @@
+imageName: 'base'
+baseImage: 'default'
+apps:
+  - 'yq'

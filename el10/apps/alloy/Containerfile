@@ -1,0 +1,28 @@
+ARG VERSION_ALLOY
+
+RUN <<EOT
+  set -euxo pipefail
+
+  # Grafana Alloy
+  # https://grafana.com/docs/alloy/latest/set-up/install/linux/
+  echo -e '[grafana]\nname=grafana\nbaseurl=https://rpm.grafana.com\nrepo_gpgcheck=1\nenabled=1\ngpgcheck=1\ngpgkey=https://rpm.grafana.com/gpg.key\nsslverify=1\nsslcacert=/etc/pki/tls/certs/ca-bundle.crt' | sudo tee /etc/yum.repos.d/grafana.repo
+  dnf install -y alloy-${VERSION_ALLOY}
+
+  # prometheus-podman-exporter
+  dnf install -y prometheus-podman-exporter
+
+  dnf clean all
+
+  # Fix permissions for Alloy
+  mkdir -p /var/lib/alloy /var/lib/alloy/data /etc/systemd/system/alloy.service.d
+  chown -R alloy:alloy /var/lib/alloy /var/lib/alloy/data
+  chmod 770 /var/lib/alloy /var/lib/alloy/data
+  chown root:alloy /etc/alloy
+  chmod 770 /etc/alloy
+
+  # Disable telemetry for alloy
+  echo -e 'CONFIG_FILE="/etc/alloy/config.alloy"\nCUSTOM_ARGS="--disable-reporting"\nRESTART_ON_UPGRADE=true' > /etc/sysconfig/alloy
+
+  # Configure prometheus-podman-exporter
+  echo 'PODMAN_EXPORTER_OPTS="--collector.enable-all --web.listen-address=127.0.0.1:9855"' > /etc/sysconfig/prometheus-podman-exporter
+EOT

@@ -1,0 +1,32 @@
+baseImages:
+  #alma-linux-10:
+  #  image: quay.io/almalinuxorg/almalinux-bootc
+  #  tag: "10"
+  #  digest: sha256:f78485a278ab785c5957de1abb55ea3f04db3d3975de634e9b284092f2e639f5
+  centos-stream-10:
+    image: quay.io/centos-bootc/centos-bootc
+    tag: stream10
+    digest: sha256:165e9103b7dffb108822488f5f631ea4ce73e75c76a8015aabf101afec1d9352
+folders:
+  apps: apps
+  containers: containers
+containers:
+  - base
+  - tailscale
+  - zfs
+  - monitoring
+  - monitoring-zfs
+  - k3s
+  - server
+  - server-zfs
+  - server-atlas
+  - server-worker
+apps:
+  - alloy
+  - cloudflared
+  - gotop
+  - k3s
+  - restic
+  - tailscale
+  - yq
+  - zfs

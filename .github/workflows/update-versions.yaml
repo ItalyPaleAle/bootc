@@ -32,7 +32,6 @@ jobs:
             -o ../.bin/tools
         working-directory: ./tools
 
-      # Run the update-versions tool
       - name: "Run the update-versions tool"
         id: update-versions
         run: |
@@ -40,9 +39,16 @@ jobs:
 
           mkdir -p .out
 
+          # For el9
           .bin/tools \
             update-versions \
             --work-dir el9 \
+              | tee .out/updated.md
+
+          # For el10
+          .bin/tools \
+            update-versions \
+            --work-dir el10 \
               | tee .out/updated.md
 
           if git diff; then

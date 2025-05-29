@@ -1,0 +1,4 @@
+imageName: 'monitoring'
+baseImage: 'base' # ../base
+apps:
+  - 'alloy'

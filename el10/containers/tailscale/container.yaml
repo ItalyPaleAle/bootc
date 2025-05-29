@@ -1,0 +1,4 @@
+imageName: 'tailscale'
+baseImage: 'base' # ../base
+apps:
+  - 'tailscale'

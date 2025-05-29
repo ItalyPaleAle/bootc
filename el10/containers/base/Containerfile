@@ -1,0 +1,17 @@
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE}
+
+RUN <<EOT
+  set -euxo pipefail
+
+  # Add the EPEL repositories
+  dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+
+  # Add: screen, pv, sqlite, tmux, jq, rsync, tree
+  dnf install -y --enablerepo=epel \
+    screen pv sqlite tmux jq rsync tree
+
+  # Clean-up
+  dnf clean all
+EOT

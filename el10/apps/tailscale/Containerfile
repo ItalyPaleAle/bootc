@@ -1,0 +1,23 @@
+ARG VERSION_TAILSCALE
+
+# Add tailscaled
+RUN <<EOT
+  set -euxo pipefail
+
+  # Get repo name for Tailscale
+  REPO=""
+  case $(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"') in
+    rhel) REPO="rhel/9" ;;
+    centos) REPO="centos/9" ;;
+    # Alma Linux uses RHEL
+    almalinux) REPO="rhel/9" ;;
+    # Default to RHEL
+    *) REPO="rhel9" ;;
+  esac
+
+  dnf config-manager --add-repo "https://pkgs.tailscale.com/stable/${REPO}/tailscale.repo"
+  dnf install -y tailscale-${VERSION_TAILSCALE}
+  dnf clean all
+
+  systemctl enable tailscaled
+EOT

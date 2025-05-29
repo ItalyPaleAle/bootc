@@ -1,0 +1,13 @@
+name: gotop
+version: 4.2.0
+checksums: 9c3f2f072b82918c56a15a229b528ba7d1e01d54cc809f64555852fa775ef8a6 gotop_v4.2.0_linux_amd64.rpm
+cmds:
+  updateVersion: |
+    curl -Ls "https://api.github.com/repos/xxxserxxx/gotop/releases/latest" \
+      | jq '.tag_name' -r \
+      | cut -c 2-
+  updateChecksums: |
+    VERSION=$(curl -Ls "https://api.github.com/repos/xxxserxxx/gotop/releases/latest" \
+      | jq '.tag_name' -r)
+    SHA=$(curl -sL "https://github.com/xxxserxxx/gotop/releases/download/${VERSION}/gotop_${VERSION}_linux_amd64.rpm" | sha256sum | cut -d " " -f 1)
+    echo "${SHA} gotop_${VERSION}_linux_amd64.rpm"

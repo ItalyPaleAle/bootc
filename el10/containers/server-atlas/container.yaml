@@ -1,0 +1,4 @@
+imageName: 'server-atlas'
+baseImage: 'server-zfs' # ../server-zfs
+apps:
+  - 'cloudflared'
