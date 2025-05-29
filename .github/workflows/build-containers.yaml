@@ -102,26 +102,6 @@ jobs:
             -o ../.bin/tools
         working-directory: ./tools
 
-      # Build and push container image for tailscale
-      # For linux/amd64 and linux/arm64
-      - name: "Build and push container image: tailscale"
-        id: build-and-push-tailscale
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            tailscale \
-            --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
-            --work-dir ./el${{ matrix.version }} \
-            --arch amd64,arm64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
-            --platform docker \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/tailscale.json
-          echo "ImageName=$(jq -r '.imageName' .out/tailscale.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/tailscale.json)" >> "$GITHUB_OUTPUT"
-
       # Build and push container image for base
       # For linux/amd64 and linux/arm64
       - name: "Build and push container image: base"
@@ -141,6 +121,26 @@ jobs:
               | tee .out/base.json
           echo "ImageName=$(jq -r '.imageName' .out/base.json)" >> "$GITHUB_OUTPUT"
           echo "Digest=$(jq -r '.digest' .out/base.json)" >> "$GITHUB_OUTPUT"
+
+      # Build and push container image for tailscale
+      # For linux/amd64 and linux/arm64
+      - name: "Build and push container image: tailscale"
+        id: build-and-push-tailscale
+        run: |
+          set -euo pipefail
+          .bin/tools \
+            build \
+            tailscale \
+            --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
+            --work-dir ./el${{ matrix.version }} \
+            --arch amd64,arm64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
+            --platform docker \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/tailscale.json
+          echo "ImageName=$(jq -r '.imageName' .out/tailscale.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/tailscale.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push container image for monitoring
       # For linux/amd64 and linux/arm64
