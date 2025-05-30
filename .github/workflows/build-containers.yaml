@@ -14,7 +14,7 @@ env:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: read
@@ -35,6 +35,14 @@ jobs:
           - { baseImage: 'alma-linux', version: '10' }
 
     steps:
+      # From: https://github.com/bootc-dev/bootc/blob/3c86c7fbf3a065434769c6de0fe507ef5e8c4262/.github/workflows/ci.yml#L49-L54
+      - name: Get a newer podman (from debian testing)
+        run: |
+          set -eux
+          echo 'deb [trusted=yes] https://ftp.debian.org/debian/ testing main' | sudo tee /etc/apt/sources.list.d/testing.list
+          sudo apt update
+          sudo apt install -y crun/testing podman/testing skopeo/testing
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -50,21 +58,9 @@ jobs:
       # Install the cosign tool
       # https://github.com/sigstore/cosign-installer
       - name: Install cosign
-        uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0
+        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
         with:
-          cosign-release: 'v2.4.1'
-
-      # Set up Docker with containerd snapshotter
-      # Necessary for our multi-arch build to work
-      - name: Set up Docker with containerd snapshotter
-        uses: docker/setup-docker-action@01efb57f882e3b1a22e7cf3501dbe51287b0ecb4 # v4.0.0
-        with:
-          daemon-config: |
-            {
-              "features": {
-                "containerd-snapshotter": true
-              }
-            }
+          cosign-release: 'v2.4.3'
 
       # Add support for building for other platforms with QEMU
       # https://github.com/docker/setup-qemu-action
@@ -73,13 +69,7 @@ jobs:
         with:
           platforms: "linux/amd64,linux/arm64"
 
-      # Set up Docker Buildx for multi-platform builds
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
-        with:
-          platforms: "linux/amd64,linux/arm64"
-
-      # Login against a Docker registry
+      # Login against a container registry
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
         uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
@@ -115,7 +105,7 @@ jobs:
             --work-dir ./el${{ matrix.version }} \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
-            --platform docker \
+            --platform podman \
             --push \
             --tag "$(date +"%Y%m%d")" \
               | tee .out/base.json
@@ -135,7 +125,7 @@ jobs:
             --work-dir ./el${{ matrix.version }} \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
-            --platform docker \
+            --platform podman \
             --push \
             --tag "$(date +"%Y%m%d")" \
               | tee .out/tailscale.json
@@ -155,7 +145,7 @@ jobs:
             --work-dir ./el${{ matrix.version }} \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
-            --platform docker \
+            --platform podman \
             --push \
             --tag "$(date +"%Y%m%d")" \
               | tee .out/k3s.json
@@ -175,7 +165,7 @@ jobs:
             --work-dir ./el${{ matrix.version }} \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
-            --platform docker \
+            --platform podman \
             --push \
             --tag "$(date +"%Y%m%d")" \
               | tee .out/monitoring.json
@@ -195,7 +185,7 @@ jobs:
             --work-dir ./el${{ matrix.version }} \
             --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
-            --platform docker \
+            --platform podman \
             --push \
             --tag "$(date +"%Y%m%d")" \
               | tee .out/zfs.json
@@ -215,7 +205,7 @@ jobs:
             --work-dir ./el${{ matrix.version }} \
             --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
-            --platform docker \
+            --platform podman \
             --push \
             --tag "$(date +"%Y%m%d")" \
               | tee .out/monitoring-zfs.json
@@ -235,7 +225,7 @@ jobs:
             --work-dir ./el${{ matrix.version }} \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
-            --platform docker \
+            --platform podman \
             --push \
             --tag "$(date +"%Y%m%d")" \
               | tee .out/server.json
@@ -255,7 +245,7 @@ jobs:
             --work-dir ./el${{ matrix.version }} \
             --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
-            --platform docker \
+            --platform podman \
             --push \
             --tag "$(date +"%Y%m%d")" \
               | tee .out/server-zfs.json
@@ -275,7 +265,7 @@ jobs:
             --work-dir ./el${{ matrix.version }} \
             --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
-            --platform docker \
+            --platform podman \
             --push \
             --tag "$(date +"%Y%m%d")" \
               | tee .out/server-worker.json
@@ -296,7 +286,7 @@ jobs:
             --work-dir ./el${{ matrix.version }} \
             --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
-            --platform docker \
+            --platform podman \
             --push \
             --tag "$(date +"%Y%m%d")" \
               | tee .out/server-atlas.json
