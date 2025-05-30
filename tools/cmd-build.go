@@ -50,6 +50,7 @@ func init() {
 	}
 
 	buildCmd.Flags().BoolVarP(&flags.Push, "push", "p", false, "Push the container image after being built")
+	buildCmd.Flags().BoolVarP(&flags.Rechunk, "rechunk", "c", false, "Re-chunk the container image after being built (podman only)")
 	buildCmd.Flags().StringVar(&flags.Platform, "platform", "podman", "Container platform to use: 'podman' or 'docker'")
 	buildCmd.Flags().StringVarP(&flags.Repository, "repository", "r", "localhost/bootc", "Base repository for tagging images")
 	buildCmd.Flags().StringVarP(&flags.WorkDir, "work-dir", "w", ".", "Working directory, containing the config files, the apps, and containers")
@@ -64,6 +65,7 @@ type buildFlags struct {
 	WorkDir          string
 	DefaultBaseImage string
 	Push             bool
+	Rechunk          bool
 	Platform         string
 	Repository       string
 	Tags             []string
@@ -92,6 +94,10 @@ func (f *buildFlags) Validate() error {
 		// All good
 	default:
 		return errors.New("invalid value for --platform flag, must be 'podman' or 'docker'")
+	}
+
+	if f.Rechunk && f.Platform != "podman" {
+		return errors.New("rechunking is supported with Podman only")
 	}
 
 	if !slices.Contains(f.Tags, "latest") {
@@ -162,6 +168,32 @@ func ProcessContainer(flags *buildFlags, containerName string, config *ConfigFil
 	})
 	if err != nil {
 		return fmt.Errorf("failed to build container: %w", err)
+	}
+
+	// Rechunk if needed
+	if flags.Rechunk {
+		//for _, arch := range flags.Archs {
+		// Docs: https://docs.fedoraproject.org/en-US/bootc/building-from-scratch/#_optimizing_container_images
+		// This is a constant image
+		const rechunkImage = "quay.io/centos-bootc/centos-bootc:stream10"
+		err = runProcess(runProcessOpts{
+			Name: flags.Platform,
+			Args: []string{
+				"run",
+				"--rm",
+				"--privileged",
+				"-v", "/var/lib/containers:/var/lib/containers",
+				rechunkImage,
+				"/usr/libexec/bootc-base-imagectl",
+				"rechunk",
+				manifestNameTag,
+				flags.buildImageNameTag(containerConfig.ImageName, "chunked"),
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to tag manifest '%s': %w", manifestNameTag, err)
+		}
+		//}
 	}
 
 	// Tag as latest
@@ -291,7 +323,7 @@ func getBuildArgs(flags *buildFlags, containerConfig *ContainerConfig, config *C
 
 	// For Docker, we use "--tag", while for Podman it's "--manifest"
 	if flags.IsPodman() {
-		buildArgs = append(buildArgs, "--manifest", manifestNameTag)
+		buildArgs = append(buildArgs, "--manifest", manifestNameTag, "--load")
 	} else {
 		buildArgs = append(buildArgs, "--tag", manifestNameTag)
 	}
