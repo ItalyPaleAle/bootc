@@ -43,13 +43,13 @@ jobs:
           .bin/tools \
             update-versions \
             --work-dir el9 \
-              | tee .out/updated.md
+              | tee -a .out/updated.md
 
           # For el10
           .bin/tools \
             update-versions \
             --work-dir el10 \
-              | tee .out/updated.md
+              | tee -a .out/updated.md
 
           if git diff; then
             echo "changed=1" >> "$GITHUB_OUTPUT"

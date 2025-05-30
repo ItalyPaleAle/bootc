@@ -130,7 +130,7 @@ func init() {
 			}
 
 			// Print list of updates as markdown
-			fmt.Println("# " + flags.WorkDir)
+			fmt.Println("## " + flags.WorkDir)
 			for _, u := range updated {
 				fmt.Println("- " + u)
 			}
