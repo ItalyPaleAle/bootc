@@ -30,9 +30,6 @@ jobs:
           - centos-stream
           - alma-linux
         version: ['9', '10']
-        exclude:
-          # Excluding since not yet ready
-          - { baseImage: 'alma-linux', version: '10' }
 
     steps:
       # From: https://github.com/bootc-dev/bootc/blob/3c86c7fbf3a065434769c6de0fe507ef5e8c4262/.github/workflows/ci.yml#L49-L54
