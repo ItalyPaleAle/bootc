@@ -213,7 +213,7 @@ jobs:
       # For linux/amd64 and linux/arm64
       - name: "Build and push container image: server"
         id: build-and-push-server
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux'
         run: |
           set -euo pipefail
           .bin/tools \
@@ -234,7 +234,7 @@ jobs:
       # For linux/amd64
       - name: "Build and push container image: server-zfs"
         id: build-and-push-server-zfs
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux'
         run: |
           set -euo pipefail
           .bin/tools \
@@ -255,7 +255,7 @@ jobs:
       # For linux/amd64 and linux/arm64
       - name: "Build and push container image: server-worker"
         id: build-and-push-server-worker
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux'
         run: |
           set -euo pipefail
           .bin/tools \
@@ -276,7 +276,7 @@ jobs:
       # For linux/amd64 and linux/arm64
       - name: "Build and push container image: server-k3s"
         id: build-and-push-server-k3s
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux'
         run: |
           set -euo pipefail
           .bin/tools \
@@ -297,7 +297,7 @@ jobs:
       # For linux/amd64
       - name: "Build and push container image: server-atlas"
         id: build-and-push-server-atlas
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux'
         run: |
           set -euo pipefail
           .bin/tools \
@@ -357,7 +357,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server'
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server.outputs.ImageName }}
@@ -365,7 +365,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-zfs'
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-zfs.outputs.ImageName }}
@@ -373,7 +373,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-worker'
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-worker.outputs.ImageName }}
@@ -381,7 +381,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-k3s'
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-k3s.outputs.ImageName }}
@@ -389,7 +389,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-atlas'
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-atlas.outputs.ImageName }}
