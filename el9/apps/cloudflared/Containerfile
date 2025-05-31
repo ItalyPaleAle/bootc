@@ -1,10 +1,16 @@
 ARG VERSION_CLOUDFLARED
+ARG CHECKSUMS_CLOUDFLARED
 
 # Add cloudflared
 RUN <<EOT
   set -euxo pipefail
 
-  dnf config-manager --add-repo https://pkg.cloudflare.com/cloudflared-ascii.repo
-  dnf install -y cloudflared-${VERSION_CLOUDFLARED}
-  dnf clean all
+  # Add cloudflared, fetching the pre-compiled RPM from the official GitHub repository
+  ARCH=$(uname -m) 
+
+  # Download the binary
+  curl -sLO "https://github.com/cloudflare/cloudflared/releases/download/${VERSION_CLOUDFLARED}/cloudflared-linux-${ARCH}.rpm"
+  echo "${CHECKSUMS_CLOUDFLARED}" | sha256sum --check --ignore-missing --status
+  dnf install -y "cloudflared-linux-${ARCH}.rpm"
+  rm "cloudflared-linux-${ARCH}.rpm"
 EOT

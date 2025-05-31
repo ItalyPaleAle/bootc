@@ -1,7 +1,15 @@
 name: cloudflared
 containerfile: Containerfile
 version: 2025.5.0
+checksums: |-
+  309ddfa2edf54cd3dcffb08ed36fb64616ae026796baad5d76b59964793098d0  cloudflared-linux-aarch64.rpm
+  1989dd8952f01aaa90c913894f9bcf62a479eb795259b0ae1809ef74e4524caf  cloudflared-linux-x86_64.rpm
 cmds:
   updateVersion: |
     curl -Ls "https://api.github.com/repos/cloudflare/cloudflared/releases/latest" \
       | jq '.tag_name' -r
+  updateChecksums: |
+    curl -Ls "https://api.github.com/repos/cloudflare/cloudflared/releases/latest" \
+      | jq '.body' -r \
+      | grep "cloudflared-linux-x86_64.rpm\|cloudflared-linux-aarch64.rpm" \
+      | awk -F': ' '{print $2 "  " $1}'
