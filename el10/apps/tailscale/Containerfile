@@ -7,10 +7,10 @@ RUN <<EOT
   # Get repo name for Tailscale
   REPO=""
   case $(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"') in
-    rhel) REPO="rhel/9" ;;
-    centos) REPO="centos/9" ;;
+    rhel) REPO="rhel/10" ;;
+    centos) REPO="centos/10" ;;
     # Alma Linux uses RHEL
-    almalinux) REPO="rhel/9" ;;
+    almalinux) REPO="rhel/10" ;;
     # Default to RHEL
     *) REPO="rhel9" ;;
   esac
