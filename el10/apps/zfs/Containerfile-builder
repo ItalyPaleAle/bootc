@@ -26,7 +26,7 @@ RUN <<EOT
 
   CRB_REPO_NAME=""
   case $(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"') in
-    rhel) CRB_REPO_NAME="codeready-builder-for-rhel-9-$(arch)-rpms" ;;
+    rhel) CRB_REPO_NAME="codeready-builder-for-rhel-10-$(arch)-rpms" ;;
     *) CRB_REPO_NAME="crb" ;;
   esac
   dnf install -y --enablerepo=epel --enablerepo=$CRB_REPO_NAME \
