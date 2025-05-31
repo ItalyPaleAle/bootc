@@ -1,7 +1,0 @@
-imageName: 'server'
-baseImage: 'base' # ../base
-apps:
-  - 'alloy'
-  - 'gotop'
-  - 'restic'
-  - 'tailscale'

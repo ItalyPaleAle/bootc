@@ -17,10 +17,6 @@ containers:
   - monitoring
   - monitoring-zfs
   - k3s
-  - server
-  - server-zfs
-  - server-atlas
-  - server-worker
 apps:
   - alloy
   - cloudflared

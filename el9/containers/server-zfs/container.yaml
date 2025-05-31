@@ -1,8 +1,0 @@
-imageName: 'server-zfs'
-baseImage: 'base' # ../base
-apps:
-  - 'alloy'
-  - 'gotop'
-  - 'restic'
-  - 'tailscale'
-  - 'zfs'

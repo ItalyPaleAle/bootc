@@ -1,4 +1,0 @@
-# Worker server: runs apps, and consumes storage from the network (via iSCSI and/or NFS)
-imageName: 'server-worker'
-baseImage: 'server' # ../server
-apps: []
