@@ -273,7 +273,6 @@ jobs:
       # For linux/amd64
       - name: "Build and push container image: server-atlas"
         id: build-and-push-server-atlas
-        if: matrix.version == '9'
         run: |
           set -euo pipefail
           .bin/tools \
@@ -355,7 +354,6 @@ jobs:
 
       - name: 'Container image attestation: server-atlas'
         uses: actions/attest-build-provenance@v1
-        if: matrix.version == '9'
         with:
           subject-name: ${{ steps.build-and-push-server-atlas.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-atlas.outputs.Digest }}

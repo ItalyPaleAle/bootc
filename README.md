@@ -2,9 +2,9 @@
 
 Custom images for Enterprise Linux that can be used with bootc. Currently supports:
 
-- **CentOS Stream 9**: Published on GitHub Packages
-- **Alma Linux 9**: Published on GitHub Packages
-- **Red Hat Enterprise Linux 9**: [See instructions](#use-with-rhel)
+- **CentOS Stream 10 and 9**: Published on GitHub Packages
+- **Alma Linux 10 and 9**: Published on GitHub Packages
+- **Red Hat Enterprise Linux 10 and 9**: [See instructions](#use-with-rhel)
 
 Images:
 
@@ -28,11 +28,13 @@ Includes:
 Image:
 
 ```text
+ghcr.io/italypaleale/bootc/centos-stream-10/base:latest
 ghcr.io/italypaleale/bootc/centos-stream-9/base:latest
+ghcr.io/italypaleale/bootc/alma-linux-10/base:latest
 ghcr.io/italypaleale/bootc/alma-linux-9/base:latest
 ```
 
-[Source](./el9/containers/base/)
+Source: [el10](./el10/containers/base/), [el9](./el9/containers/base/)
 
 ## `tailscale` image
 
@@ -44,11 +46,13 @@ Includes:
 Image:
 
 ```text
+ghcr.io/italypaleale/bootc/centos-stream-10/tailscale:latest
 ghcr.io/italypaleale/bootc/centos-stream-9/tailscale:latest
+ghcr.io/italypaleale/bootc/alma-linux-10/tailscale:latest
 ghcr.io/italypaleale/bootc/alma-linux-9/tailscale:latest
 ```
 
-[Source](./el9/containers/tailscale/)
+Source: [el10](./el10/containers/tailscale/), [el9](./el9/containers/tailscale/)
 
 ## `k3s` image
 
@@ -60,11 +64,13 @@ Includes:
 Image:
 
 ```text
+ghcr.io/italypaleale/bootc/centos-stream-10/k3s:latest
 ghcr.io/italypaleale/bootc/centos-stream-9/k3s:latest
+ghcr.io/italypaleale/bootc/alma-linux-10/k3s:latest
 ghcr.io/italypaleale/bootc/alma-linux-9/k3s:latest
 ```
 
-[Source](./el9/containers/k3s/)
+Source: [el10](./el10/containers/k3s/), [el9](./el9/containers/k3s/)
 
 ### Using K3s
 
@@ -89,11 +95,13 @@ Includes:
 Image:
 
 ```text
+ghcr.io/italypaleale/bootc/centos-stream-10/zfs:latest
 ghcr.io/italypaleale/bootc/centos-stream-9/zfs:latest
+ghcr.io/italypaleale/bootc/alma-linux-10/zfs:latest
 ghcr.io/italypaleale/bootc/alma-linux-9/zfs:latest
 ```
 
-[Source](./el9/containers/zfs/)
+Source: [el10](./el10/containers/zfs/), [el9](./el9/containers/zfs/)
 
 ## `monitoring` image
 
@@ -106,11 +114,13 @@ Includes:
 Image:
 
 ```text
+ghcr.io/italypaleale/bootc/centos-stream-10/monitoring:latest
 ghcr.io/italypaleale/bootc/centos-stream-9/monitoring:latest
+ghcr.io/italypaleale/bootc/alma-linux-10/monitoring:latest
 ghcr.io/italypaleale/bootc/alma-linux-9/monitoring:latest
 ```
 
-[Source](./el9/containers/monitoring/)
+Source: [el10](./el10/containers/monitoring/), [el9](./el9/containers/monitoring/)
 
 ## `monitoring-zfs` image
 
@@ -123,11 +133,13 @@ Includes:
 Image:
 
 ```text
+ghcr.io/italypaleale/bootc/centos-stream-10/monitoring-zfs:latest
 ghcr.io/italypaleale/bootc/centos-stream-9/monitoring-zfs:latest
+ghcr.io/italypaleale/bootc/alma-linux-10/monitoring-zfs:latest
 ghcr.io/italypaleale/bootc/alma-linux-9/monitoring-zfs:latest
 ```
 
-[Source](./el9/containers/monitoring-zfs/)
+Source: [el10](./el10/containers/monitoring-zfs/), [el9](./el9/containers/monitoring-zfs/)
 
 ## Build images
 
@@ -149,37 +161,37 @@ To build images locally, you will need these tools installed:
 2. (Optional) to update the versions of apps and base images, run the `update-versions` command:
 
    ```sh
-   .bin/tools update-versions --work-dir ./el9
+   .bin/tools update-versions --work-dir ./el10
    ```
 
-3. Build an image. The command below is an example to build the [base](./el9/containers/base) image, pushing it to Docker Hub at `docker.io/username/bootc/centos-stream-9/base` with the tag as the current date.
+3. Build an image. The command below is an example to build the [base](./el10/containers/base) image, pushing it to Docker Hub at `docker.io/username/bootc/centos-stream-10/base` with the tag as the current date.
 
    ```sh
    .bin/tools build \
       base \
-      --default-base-image "centos-stream-9" \
-      --work-dir ./el9 \
+      --default-base-image "centos-stream-10" \
+      --work-dir ./el10 \
       --arch amd64,arm64 \
-      --repository "docker.io/username/bootc/centos-stream-9" \
+      --repository "docker.io/username/bootc/centos-stream-10" \
       --push \
       --tag "$(date +"%Y%m%d")"
    ```
 
 ## Use with RHEL
 
-The Containerfiles are compatible with RHEL too, currently supporting RHEL 9. Due to licensing reasons, the RHEL-based images are not published from this repo automatically.
+The Containerfiles are compatible with RHEL too, currently supporting RHEL 10 and 9. Due to licensing reasons, the RHEL-based images are not published from this repo automatically.
 
 > For building RHEL container images, the host OS must be running RHEL as well, or the container will not be able to connect to the Red Hat repositories.
 
 To build images based on RHEL locally:
 
 1. Make sure Podman is authenticated with the Red Hat Container Registry (use `podman login`) **and** so is Docker (the credentials for the registry must be available in the file `~/.docker/config.json` for the `update-versions` tool to work)
-2. Create the file `el9/config.override.yaml` file:
+2. Create the file `el10/config.override.yaml` file:
 
    ```yaml
    baseImages:
-     rhel-9:
-       image: registry.redhat.io/rhel9/rhel-bootc
+     rhel-10:
+       image: registry.redhat.io/rhel10/rhel-bootc
        tag: latest
        digest: ''
    ```
@@ -187,18 +199,18 @@ To build images based on RHEL locally:
 3. Run the `update-versions` tool to fetch the latest digests:
 
    ```sh
-   .bin/tools update-versions --work-dir ./el9
+   .bin/tools update-versions --work-dir ./el10
    ```
 
-4. Build the containers using `rhel-9` as default base image. For example, to build the [base](./el9/containers/base) image:
+4. Build the containers using `rhel-10` as default base image. For example, to build the [base](./el10/containers/base) image:
 
    ```sh
    .bin/tools build \
       base \
-      --default-base-image "rhel-9" \
-      --work-dir ./el9 \
+      --default-base-image "rhel-10" \
+      --work-dir ./el10 \
       --arch amd64,arm64 \
-      --repository "docker.io/username/bootc/rhel9" \
+      --repository "docker.io/username/bootc/rhel10" \
       --push \
       --tag "$(date +"%Y%m%d")"
    ```
