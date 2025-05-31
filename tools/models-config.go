@@ -63,7 +63,7 @@ func LoadConfigFile(workDir string, configFileName string, overrideFileName stri
 
 	// Load the override file if present
 	if overrideFileName != "" {
-		err = loadYamlFile(config, overrideFileName)
+		err = loadYamlFile(config, filepath.Join(workDir, overrideFileName))
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}

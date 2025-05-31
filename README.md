@@ -185,7 +185,7 @@ The Containerfiles are compatible with RHEL too, currently supporting RHEL 10 an
 
 To build images based on RHEL locally:
 
-1. Make sure Podman is authenticated with the Red Hat Container Registry (use `podman login`) **and** so is Docker (the credentials for the registry must be available in the file `~/.docker/config.json` for the `update-versions` tool to work)
+1. Make sure Podman is authenticated with the Red Hat Container Registry (use `podman login registry.redhat.io`) **and** so is Docker (the credentials for the registry must be available in the file `~/.docker/config.json` for the `update-versions` tool to work). You can create [Token Based Registries](https://access.redhat.com/terms-based-registry/) instead of passwords. Full docs for [registry authentication](https://access.redhat.com/articles/RegistryAuthentication).
 2. Create the file `el10/config.override.yaml` file:
 
    ```yaml
@@ -199,7 +199,7 @@ To build images based on RHEL locally:
 3. Run the `update-versions` tool to fetch the latest digests:
 
    ```sh
-   .bin/tools update-versions --work-dir ./el10
+   .bin/tools update-versions --config-file-name config.override.yaml --work-dir ./el10
    ```
 
 4. Build the containers using `rhel-10` as default base image. For example, to build the [base](./el10/containers/base) image:
@@ -209,7 +209,7 @@ To build images based on RHEL locally:
       base \
       --default-base-image "rhel-10" \
       --work-dir ./el10 \
-      --arch amd64,arm64 \
+      --arch amd64 \
       --repository "docker.io/username/bootc/rhel10" \
       --push \
       --tag "$(date +"%Y%m%d")"
