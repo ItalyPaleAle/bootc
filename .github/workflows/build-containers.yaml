@@ -100,7 +100,7 @@ jobs:
             base \
             --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
             --work-dir ./el${{ matrix.version }} \
-            --arch amd64,arm64 \
+            --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
             --platform podman \
             --push \
@@ -120,7 +120,7 @@ jobs:
             tailscale \
             --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
             --work-dir ./el${{ matrix.version }} \
-            --arch amd64,arm64 \
+            --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
             --platform podman \
             --push \
@@ -140,7 +140,7 @@ jobs:
             k3s \
             --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
             --work-dir ./el${{ matrix.version }} \
-            --arch amd64,arm64 \
+            --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
             --platform podman \
             --push \
@@ -160,7 +160,7 @@ jobs:
             monitoring \
             --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
             --work-dir ./el${{ matrix.version }} \
-            --arch amd64,arm64 \
+            --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
             --platform podman \
             --push \
@@ -220,7 +220,7 @@ jobs:
             server \
             --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
             --work-dir ./el${{ matrix.version }} \
-            --arch amd64,arm64 \
+            --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
             --platform podman \
             --push \
@@ -260,7 +260,7 @@ jobs:
             server-worker \
             --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
             --work-dir ./el${{ matrix.version }} \
-            --arch amd64,arm64 \
+            --arch amd64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
             --platform podman \
             --push \
