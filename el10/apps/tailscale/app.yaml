@@ -1,6 +1,6 @@
 name: tailscale
 containerfile: Containerfile
-version: 1.84.1
+version: 1.84.0
 cmds:
   updateVersion: |
     curl -Ls "https://api.github.com/repos/tailscale/tailscale/releases/latest" \
