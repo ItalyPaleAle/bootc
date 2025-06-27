@@ -21,7 +21,9 @@ containers:
   - server-zfs
   - server-atlas
   - server-k3s
+  - server-k3s-zfs
   - server-worker
+  - server-worker-zfs
 apps:
   - alloy
   - cloudflared
