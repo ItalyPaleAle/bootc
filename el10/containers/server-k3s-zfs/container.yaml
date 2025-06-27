@@ -1,0 +1,5 @@
+# K3s worker server with ZFS: runs apps, and consumes storage from the network (via iSCSI and/or NFS)
+imageName: 'server-k3s-zfs'
+baseImage: 'server-worker-zfs' # ../server-worker-zfs
+apps:
+  - 'k3s'

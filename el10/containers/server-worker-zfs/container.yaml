@@ -1,0 +1,4 @@
+# Worker server with ZFS: runs apps, and consumes storage from the network (via iSCSI and/or NFS)
+imageName: 'server-worker-zfs'
+baseImage: 'server-zfs' # ../server-zfs
+apps: []

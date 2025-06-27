@@ -210,7 +210,7 @@ jobs:
           echo "Digest=$(jq -r '.digest' .out/monitoring-zfs.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push container image for server
-      # For linux/amd64 and linux/arm64
+      # For linux/amd64 and linux/arm64 (Alma Linux only)
       - name: "Build and push container image: server"
         id: build-and-push-server
         if: matrix.baseImage == 'alma-linux'
@@ -231,7 +231,7 @@ jobs:
           echo "Digest=$(jq -r '.digest' .out/server.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push container image for server-zfs
-      # For linux/amd64
+      # For linux/amd64 (Alma Linux only)
       - name: "Build and push container image: server-zfs"
         id: build-and-push-server-zfs
         if: matrix.baseImage == 'alma-linux'
@@ -252,7 +252,7 @@ jobs:
           echo "Digest=$(jq -r '.digest' .out/server-zfs.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push container image for server-worker
-      # For linux/amd64 and linux/arm64
+      # For linux/amd64 and linux/arm64 (Alma Linux only)
       - name: "Build and push container image: server-worker"
         id: build-and-push-server-worker
         if: matrix.baseImage == 'alma-linux'
@@ -263,7 +263,7 @@ jobs:
             server-worker \
             --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
             --work-dir ./el${{ matrix.version }} \
-            --arch amd64 \
+            --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
             --platform podman \
             --push \
@@ -273,7 +273,7 @@ jobs:
           echo "Digest=$(jq -r '.digest' .out/server-worker.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push container image for server-k3s
-      # For linux/amd64 and linux/arm64
+      # For linux/amd64 and linux/arm64 (Alma Linux only)
       - name: "Build and push container image: server-k3s"
         id: build-and-push-server-k3s
         if: matrix.baseImage == 'alma-linux'
@@ -284,7 +284,7 @@ jobs:
             server-k3s \
             --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
             --work-dir ./el${{ matrix.version }} \
-            --arch amd64 \
+            --arch amd64,arm64 \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
             --platform podman \
             --push \
@@ -293,8 +293,50 @@ jobs:
           echo "ImageName=$(jq -r '.imageName' .out/server-k3s.json)" >> "$GITHUB_OUTPUT"
           echo "Digest=$(jq -r '.digest' .out/server-k3s.json)" >> "$GITHUB_OUTPUT"
 
+      # Build and push container image for server-worker-zfs
+      # For linux/amd64 (Alma Linux only)
+      - name: "Build and push container image: server-worker-zfs"
+        id: build-and-push-server-worker-zfs
+        if: matrix.baseImage == 'alma-linux'
+        run: |
+          set -euo pipefail
+          .bin/tools \
+            build \
+            server-worker-zfs \
+            --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
+            --work-dir ./el${{ matrix.version }} \
+            --arch amd64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
+            --platform podman \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/server-worker-zfs.json
+          echo "ImageName=$(jq -r '.imageName' .out/server-worker-zfs.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/server-worker-zfs.json)" >> "$GITHUB_OUTPUT"
+
+      # Build and push container image for server-k3s-zfs
+      # For linux/amd64 (Alma Linux only)
+      - name: "Build and push container image: server-k3s-zfs"
+        id: build-and-push-server-k3s-zfs
+        if: matrix.baseImage == 'alma-linux'
+        run: |
+          set -euo pipefail
+          .bin/tools \
+            build \
+            server-k3s-zfs \
+            --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
+            --work-dir ./el${{ matrix.version }} \
+            --arch amd64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
+            --platform podman \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/server-k3s-zfs.json
+          echo "ImageName=$(jq -r '.imageName' .out/server-k3s-zfs.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/server-k3s-zfs.json)" >> "$GITHUB_OUTPUT"
+
       # Build and push container image for server-atlas
-      # For linux/amd64
+      # For linux/amd64 (Alma Linux only)
       - name: "Build and push container image: server-atlas"
         id: build-and-push-server-atlas
         if: matrix.baseImage == 'alma-linux'
@@ -386,6 +428,22 @@ jobs:
         with:
           subject-name: ${{ steps.build-and-push-server-k3s.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-k3s.outputs.Digest }}
+          push-to-registry: true
+
+      - name: 'Container image attestation: server-worker-zfs'
+        if: matrix.baseImage == 'alma-linux'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.build-and-push-server-worker-zfs.outputs.ImageName }}
+          subject-digest: ${{ steps.build-and-push-server-worker-zfs.outputs.Digest }}
+          push-to-registry: true
+
+      - name: 'Container image attestation: server-k3s-zfs'
+        if: matrix.baseImage == 'alma-linux'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.build-and-push-server-k3s-zfs.outputs.ImageName }}
+          subject-digest: ${{ steps.build-and-push-server-k3s-zfs.outputs.Digest }}
           push-to-registry: true
 
       - name: 'Container image attestation: server-atlas'

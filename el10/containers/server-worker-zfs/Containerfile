@@ -1,0 +1,15 @@
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE}
+
+RUN <<EOT
+  set -euxo pipefail
+
+  # Add iSCSI initiator and NFS client utils
+  dnf install -y  \
+    iscsi-initiator-utils \
+    nfs-utils sssd-nfs-idmap libnfsidmap
+
+  # Clean-up
+  dnf clean all
+EOT
