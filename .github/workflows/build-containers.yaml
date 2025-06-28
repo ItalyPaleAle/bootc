@@ -294,10 +294,10 @@ jobs:
           echo "Digest=$(jq -r '.digest' .out/server-k3s.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push container image for server-worker-zfs
-      # For linux/amd64 (Alma Linux only)
+      # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-worker-zfs"
         id: build-and-push-server-worker-zfs
-        if: matrix.baseImage == 'alma-linux'
+        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
         run: |
           set -euo pipefail
           .bin/tools \
@@ -315,10 +315,10 @@ jobs:
           echo "Digest=$(jq -r '.digest' .out/server-worker-zfs.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push container image for server-k3s-zfs
-      # For linux/amd64 (Alma Linux only)
+      # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-k3s-zfs"
         id: build-and-push-server-k3s-zfs
-        if: matrix.baseImage == 'alma-linux'
+        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
         run: |
           set -euo pipefail
           .bin/tools \
@@ -431,7 +431,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-worker-zfs'
-        if: matrix.baseImage == 'alma-linux'
+        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-worker-zfs.outputs.ImageName }}
@@ -439,7 +439,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-k3s-zfs'
-        if: matrix.baseImage == 'alma-linux'
+        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-k3s-zfs.outputs.ImageName }}
