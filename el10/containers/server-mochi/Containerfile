@@ -1,0 +1,21 @@
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE}
+
+# Copy NFS configuration
+COPY nfs.conf /etc/nfs.conf
+
+RUN <<EOT
+  set -euxo pipefail
+
+  # Set permissions for nfs.conf
+  chmod 0644 /etc/nfs.conf
+
+  # Add targetcli for iSCSI
+  dnf install -y  \
+    targetcli
+
+  # Clean-up
+  dnf clean all
+EOT
+
