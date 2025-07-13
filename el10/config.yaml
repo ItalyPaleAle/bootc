@@ -2,7 +2,7 @@ baseImages:
   alma-linux-10:
     image: quay.io/almalinuxorg/almalinux-bootc
     tag: "10"
-    digest: sha256:204ae7c4dabdff4f9da21870525af922bcda074d01197277daaa05d4079befde
+    digest: sha256:c424a7be96453a70fea147adbfeb2247dcee3310277c3f68af17fbb8494f87f9
   centos-stream-10:
     image: quay.io/centos-bootc/centos-bootc
     tag: stream10
