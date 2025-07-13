@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/regclient/regclient"
@@ -87,6 +88,11 @@ func init() {
 
 				if version == app.Version {
 					// Version hasn't changed, so nothing to do
+					fmt.Fprintf(os.Stderr, "  App is already at the latest version")
+					continue
+				} else if len(app.IgnoredVersions) > 0 && slices.Contains(app.IgnoredVersions, version) {
+					// Version is ignored
+					fmt.Fprintf(os.Stderr, "  Latest version is in the ignore list")
 					continue
 				}
 

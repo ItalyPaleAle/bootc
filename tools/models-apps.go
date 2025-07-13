@@ -13,6 +13,7 @@ type App struct {
 	Version               string    `yaml:"version,omitempty"`
 	Checksums             string    `yaml:"checksums,omitempty"`
 	Cmds                  *App_Cmds `yaml:"cmds,omitempty"`
+	IgnoredVersions       []string  `yaml:"ignoredVersions,omitempty"`
 
 	SavePath string `yaml:"-"`
 }
