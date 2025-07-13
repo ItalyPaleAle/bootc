@@ -88,11 +88,11 @@ func init() {
 
 				if version == app.Version {
 					// Version hasn't changed, so nothing to do
-					fmt.Fprintf(os.Stderr, "  App is already at the latest version")
+					fmt.Fprint(os.Stderr, "  App is already at the latest version\n")
 					continue
 				} else if len(app.IgnoredVersions) > 0 && slices.Contains(app.IgnoredVersions, version) {
 					// Version is ignored
-					fmt.Fprintf(os.Stderr, "  Latest version is in the ignore list")
+					fmt.Fprint(os.Stderr, "  Latest version is in the ignore list\n")
 					continue
 				}
 
