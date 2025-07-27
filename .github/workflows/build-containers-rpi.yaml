@@ -27,7 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         baseImage:
-          - alma-linux
+          - alma-linux-rpi
         version: ['10']
 
     steps:
