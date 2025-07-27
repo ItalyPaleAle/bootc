@@ -29,7 +29,11 @@ jobs:
         baseImage:
           - centos-stream
           - alma-linux
+          - alma-linux-rpi
         version: ['9', '10']
+        exclude:
+          - baseImage: 'alma-linux-rpi'
+            version: '9'
 
     steps:
       # From: https://github.com/bootc-dev/bootc/blob/3c86c7fbf3a065434769c6de0fe507ef5e8c4262/.github/workflows/ci.yml#L49-L54
@@ -91,7 +95,7 @@ jobs:
         working-directory: ./tools
 
       # Build and push container image for base
-      # For linux/amd64 and linux/arm64
+      # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
       - name: "Build and push container image: base"
         id: build-and-push-base
         run: |
@@ -101,7 +105,7 @@ jobs:
             base \
             --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
             --work-dir ./el${{ matrix.version }} \
-            --arch amd64,arm64 \
+            --arch ${{ matrix.baseImage == 'alma-linux-rpi' && 'arm64' || 'amd64,arm64' }} \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
             --platform podman \
             --push \
@@ -111,7 +115,7 @@ jobs:
           echo "Digest=$(jq -r '.digest' .out/base.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push container image for tailscale
-      # For linux/amd64 and linux/arm64
+      # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
       - name: "Build and push container image: tailscale"
         id: build-and-push-tailscale
         run: |
@@ -121,7 +125,7 @@ jobs:
             tailscale \
             --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
             --work-dir ./el${{ matrix.version }} \
-            --arch amd64,arm64 \
+            --arch ${{ matrix.baseImage == 'alma-linux-rpi' && 'arm64' || 'amd64,arm64' }} \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
             --platform podman \
             --push \
@@ -131,7 +135,7 @@ jobs:
           echo "Digest=$(jq -r '.digest' .out/tailscale.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push container image for monitoring
-      # For linux/amd64 and linux/arm64
+      # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
       - name: "Build and push container image: k3s"
         id: build-and-push-k3s
         run: |
@@ -141,7 +145,7 @@ jobs:
             k3s \
             --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
             --work-dir ./el${{ matrix.version }} \
-            --arch amd64,arm64 \
+            --arch ${{ matrix.baseImage == 'alma-linux-rpi' && 'arm64' || 'amd64,arm64' }} \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
             --platform podman \
             --push \
@@ -151,7 +155,7 @@ jobs:
           echo "Digest=$(jq -r '.digest' .out/k3s.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push container image for monitoring
-      # For linux/amd64 and linux/arm64
+      # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
       - name: "Build and push container image: monitoring"
         id: build-and-push-monitoring
         run: |
@@ -161,7 +165,7 @@ jobs:
             monitoring \
             --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
             --work-dir ./el${{ matrix.version }} \
-            --arch amd64,arm64 \
+            --arch ${{ matrix.baseImage == 'alma-linux-rpi' && 'arm64' || 'amd64,arm64' }} \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
             --platform podman \
             --push \
@@ -174,6 +178,7 @@ jobs:
       # For linux/amd64
       - name: "Build and push container image: zfs"
         id: build-and-push-zfs
+        if: matrix.baseImage != 'alma-linux-rpi'
         run: |
           set -euo pipefail
           .bin/tools \
@@ -194,6 +199,7 @@ jobs:
       # For linux/amd64
       - name: "Build and push container image: monitoring-zfs"
         id: build-and-push-monitoring-zfs
+        if: matrix.baseImage != 'alma-linux-rpi'
         run: |
           set -euo pipefail
           .bin/tools \
@@ -211,10 +217,10 @@ jobs:
           echo "Digest=$(jq -r '.digest' .out/monitoring-zfs.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push container image for server
-      # For linux/amd64 and linux/arm64 (Alma Linux only)
+      # For linux/amd64 and linux/arm64 (or arm64 only for RPi) (Alma Linux only)
       - name: "Build and push container image: server"
         id: build-and-push-server
-        if: matrix.baseImage == 'alma-linux'
+        if: matrix.baseImage == 'alma-linux' || matrix.baseImage == 'alma-linux-rpi'
         run: |
           set -euo pipefail
           .bin/tools \
@@ -222,7 +228,7 @@ jobs:
             server \
             --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
             --work-dir ./el${{ matrix.version }} \
-            --arch amd64,arm64 \
+            --arch ${{ matrix.baseImage == 'alma-linux-rpi' && 'arm64' || 'amd64,arm64' }} \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
             --platform podman \
             --push \
@@ -408,6 +414,7 @@ jobs:
 
       - name: 'Container image attestation: zfs'
         uses: actions/attest-build-provenance@v1
+        if: matrix.baseImage != 'alma-linux-rpi'
         with:
           subject-name: ${{ steps.build-and-push-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-zfs.outputs.Digest }}
@@ -415,13 +422,14 @@ jobs:
 
       - name: 'Container image attestation: monitoring-zfs'
         uses: actions/attest-build-provenance@v1
+        if: matrix.baseImage != 'alma-linux-rpi'
         with:
           subject-name: ${{ steps.build-and-push-monitoring-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-monitoring-zfs.outputs.Digest }}
           push-to-registry: true
 
       - name: 'Container image attestation: server'
-        if: matrix.baseImage == 'alma-linux'
+        if: matrix.baseImage == 'alma-linux' || matrix.baseImage == 'alma-linux-rpi'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server.outputs.ImageName }}
