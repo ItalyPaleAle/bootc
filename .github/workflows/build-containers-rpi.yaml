@@ -45,6 +45,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'tools/go.mod'
+          cache-dependency-path: 'tools/go.sum'
 
       # Ensure that IMAGE_NAME_BASE is all lowercase
       - name: Lowercase IMAGE_NAME_BASE
@@ -54,9 +55,9 @@ jobs:
       # Install the cosign tool
       # https://github.com/sigstore/cosign-installer
       - name: Install cosign
-        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
         with:
-          cosign-release: 'v2.4.3'
+          cosign-release: 'v2.5.3'
 
       # Add support for building for other platforms with QEMU
       # https://github.com/docker/setup-qemu-action
