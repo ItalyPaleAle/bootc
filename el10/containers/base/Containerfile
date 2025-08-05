@@ -12,6 +12,9 @@ RUN <<EOT
   dnf install -y --enablerepo=epel \
     screen pv sqlite tmux jq rsync tree
 
+  # Set permissions on /run/screen, required by screen
+  chmod 0777 /run/screen
+
   # Clean-up
   dnf clean all
 EOT
