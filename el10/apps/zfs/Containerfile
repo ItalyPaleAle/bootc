@@ -15,8 +15,8 @@ RUN <<EOT
   # We don't want any files on /var and /zfs
   rm -rf /var/lib/pcp /zfs
 
-  # Add hdparm and smartmontools
-  dnf install -y hdparm smartmontools
+  # Add hdparm, sdparm, smartmontools
+  dnf install -y hdparm sdparm smartmontools
 
   # Clean-up
   dnf clean all
