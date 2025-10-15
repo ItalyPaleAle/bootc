@@ -2,15 +2,15 @@ baseImages:
   alma-linux-10:
     image: quay.io/almalinuxorg/almalinux-bootc
     tag: "10"
-    digest: sha256:3ae7ff1e4ec5a15d8eb09ba0afc3523fa866c164d7e4ce4149d2657341266e78
+    digest: sha256:0b2cbdb1370fb39cb55e42c028a79737d9d7c5e48a38c13e76594fb75c11d7e7
   alma-linux-rpi-10:
     image: quay.io/almalinuxorg/almalinux-bootc-rpi
     tag: "10"
-    digest: sha256:fab2e8b3a7974f7bf631a8d6f6811e4780d6bb19078b6c3c02d0ba339b560f95
+    digest: sha256:e2b15a770954aa87a472f2aec35ddd2ff503ff725ea813403223d714110419d6
   centos-stream-10:
     image: quay.io/centos-bootc/centos-bootc
     tag: stream10
-    digest: sha256:da74ace9526c6843704de61102ced814c2cde20ce455f2acfb705c958e98522c
+    digest: sha256:8e37f247ef71c011475130c0b49369457bc23551ba9648f695bc3c624e3f8b09
 folders:
   apps: apps
   containers: containers
