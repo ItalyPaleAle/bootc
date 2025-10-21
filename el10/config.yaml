@@ -28,6 +28,7 @@ containers:
   - server-worker
   - server-worker-zfs
   - server-atlas
+  - server-boba
   - server-mochi
 apps:
   - alloy

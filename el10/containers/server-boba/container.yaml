@@ -1,0 +1,4 @@
+imageName: 'server-boba'
+baseImage: 'server' # ../server
+apps:
+  - 'cloudflared'

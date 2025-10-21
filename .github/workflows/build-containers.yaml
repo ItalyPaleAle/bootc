@@ -384,6 +384,27 @@ jobs:
           echo "ImageName=$(jq -r '.imageName' .out/server-atlas.json)" >> "$GITHUB_OUTPUT"
           echo "Digest=$(jq -r '.digest' .out/server-atlas.json)" >> "$GITHUB_OUTPUT"
 
+      # Build and push container image for server-boba
+      # For linux/amd64 (Alma Linux only)
+      - name: "Build and push container image: server-boba"
+        id: build-and-push-server-boba
+        if: matrix.baseImage == 'alma-linux'
+        run: |
+          set -euo pipefail
+          .bin/tools \
+            build \
+            server-boba \
+            --default-base-image "${{ matrix.baseImage }}-${{ matrix.version }}" \
+            --work-dir ./el${{ matrix.version }} \
+            --arch amd64 \
+            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}-${{ matrix.version }}/" \
+            --platform podman \
+            --push \
+            --tag "$(date +"%Y%m%d")" \
+              | tee .out/server-boba.json
+          echo "ImageName=$(jq -r '.imageName' .out/server-boba.json)" >> "$GITHUB_OUTPUT"
+          echo "Digest=$(jq -r '.digest' .out/server-boba.json)" >> "$GITHUB_OUTPUT"
+
       - name: 'Container image attestation: tailscale'
         uses: actions/attest-build-provenance@v1
         with:
@@ -490,4 +511,12 @@ jobs:
         with:
           subject-name: ${{ steps.build-and-push-server-atlas.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-atlas.outputs.Digest }}
+          push-to-registry: true
+
+      - name: 'Container image attestation: server-boba'
+        if: matrix.baseImage == 'alma-linux'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.build-and-push-server-boba.outputs.ImageName }}
+          subject-digest: ${{ steps.build-and-push-server-boba.outputs.Digest }}
           push-to-registry: true
