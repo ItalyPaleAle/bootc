@@ -364,10 +364,10 @@ jobs:
           echo "Digest=$(jq -r '.digest' .out/server-mochi.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push container image for server-atlas
-      # For linux/amd64 (Alma Linux only)
+      # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-atlas"
         id: build-and-push-server-atlas
-        if: matrix.baseImage == 'alma-linux'
+        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
         run: |
           set -euo pipefail
           .bin/tools \
@@ -385,10 +385,10 @@ jobs:
           echo "Digest=$(jq -r '.digest' .out/server-atlas.json)" >> "$GITHUB_OUTPUT"
 
       # Build and push container image for server-boba
-      # For linux/amd64 (Alma Linux only)
+      # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-boba"
         id: build-and-push-server-boba
-        if: matrix.baseImage == 'alma-linux'
+        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
         run: |
           set -euo pipefail
           .bin/tools \
