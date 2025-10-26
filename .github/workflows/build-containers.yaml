@@ -506,7 +506,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-atlas'
-        if: matrix.baseImage == 'alma-linux'
+        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-atlas.outputs.ImageName }}
