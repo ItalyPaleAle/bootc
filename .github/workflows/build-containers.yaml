@@ -37,12 +37,14 @@ jobs:
 
     steps:
       # From: https://github.com/bootc-dev/bootc/blob/3c86c7fbf3a065434769c6de0fe507ef5e8c4262/.github/workflows/ci.yml#L49-L54
-      #- name: Get a newer podman (from debian testing)
-      #  run: |
-      #    set -eux
-      #    echo 'deb [trusted=yes] https://ftp.debian.org/debian/ testing main' | sudo tee /etc/apt/sources.list.d/testing.list
-      #    sudo apt update
-      #    sudo apt install -y crun/testing podman/testing skopeo/testing
+      - name: Get a newer podman (from debian testing)
+        run: |
+          set -eux
+          tail -n +1 /etc/apt/sources.list.d/*
+          tail -n +1 /etc/apt/preferences.d/podman.pref/*
+          echo 'deb [trusted=yes] https://ftp.debian.org/debian/ testing main' | sudo tee /etc/apt/sources.list.d/testing.list
+          sudo apt update
+          sudo apt install -y crun/testing podman/testing skopeo/testing
 
       - name: Checkout repository
         uses: actions/checkout@v4
