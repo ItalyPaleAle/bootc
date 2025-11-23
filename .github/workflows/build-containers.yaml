@@ -36,15 +36,36 @@ jobs:
             version: '9'
 
     steps:
-      # From: https://github.com/bootc-dev/bootc/blob/3c86c7fbf3a065434769c6de0fe507ef5e8c4262/.github/workflows/ci.yml#L49-L54
-      - name: Get a newer podman (from debian testing)
+      # From: https://github.com/containers/podman/discussions/25582
+      # Required for HEREDOC support
+      - name: Get a newer podman
         run: |
           set -eux
-          find /etc/apt/sources.list.d/ -type f -print -exec cat {} \;
-          find /etc/apt/preferences.d/podman.pref/ -type f -print -exec cat {} \;
-          echo 'deb [trusted=yes] https://ftp.debian.org/debian/ testing main' | sudo tee /etc/apt/sources.list.d/testing.list
+          # Modify Ubuntu sources to include plucky
+          sudo sed -i 's/Suites: noble noble-updates noble-backports/Suites: noble noble-updates noble-backports plucky/' /etc/apt/sources.list.d/ubuntu.sources
+
+          # Ensure preferences.d directory exists
+          sudo mkdir -p /etc/apt/preferences.d
+          sudo chmod 755 /etc/apt/preferences.d
+
+          # Create podman preferences file
+          cat << 'EOF' | sudo tee /etc/apt/preferences.d/podman.pref
+          Package: podman buildah golang-github-containers-common crun libgpgme11t64 libgpg-error0 golang-github-containers-image catatonit conmon containers-storage
+          Pin: release n=plucky
+          Pin-Priority: 991
+
+          Package: libsubid4 netavark passt aardvark-dns containernetworking-plugins libslirp0 slirp4netns
+          Pin: release n=plucky
+          Pin-Priority: 991
+
+          Package: *
+          Pin: release n=plucky
+          Pin-Priority: 400
+          EOF
+
+          # Update and install podman
           sudo apt update
-          sudo apt install -y crun/testing podman/testing skopeo/testing
+          sudo apt install -y crun podman
 
       - name: Checkout repository
         uses: actions/checkout@v4
