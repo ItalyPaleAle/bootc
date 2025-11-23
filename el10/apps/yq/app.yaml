@@ -1,9 +1,9 @@
 name: yq
 containerfile: Containerfile
-version: 4.48.2
+version: 4.49.1
 checksums: |-
-  0ffc35320180d4911bc3a772934da508715e08af444cb33d4d43660065e25bcc yq_linux_amd64
-  3c21630fda217239a5b7d718d08f08e02503098230b3abd49195d315a6dcfe45 yq_linux_arm64
+  897045e4a42933951ea8e143c44ea3f7f8005aa25105c4fbd796c3d61ee163ec yq_linux_amd64
+  48e09de3f65cb5de1cdf7ae9ba78676f147be376db2727be5dca8213aa898012 yq_linux_arm64
 cmds:
   updateVersion: |
     curl -Ls "https://api.github.com/repos/mikefarah/yq/releases/latest" \
