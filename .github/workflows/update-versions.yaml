@@ -17,11 +17,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: 'tools/go.mod'
+          cache-dependency-path: 'tools/go.sum'
 
       # Compile the tools app
       - name: Compile tools app
