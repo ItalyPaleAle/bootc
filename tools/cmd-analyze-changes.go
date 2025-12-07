@@ -65,6 +65,8 @@ type analyzeChangesResult struct {
 }
 
 func (r analyzeChangesResult) String() string {
+	// This is only used for output, so we can safely ignore the error
+	// as the struct is simple and will always marshal successfully
 	j, _ := json.MarshalIndent(r, "", "  ")
 	return string(j)
 }

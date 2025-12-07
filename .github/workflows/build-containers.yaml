@@ -137,6 +137,7 @@ jobs:
               echo "containers=[]" >> "$GITHUB_OUTPUT"
             else
               # Analyze which containers need rebuilding
+              # Note: This assumes filenames don't contain spaces, which is true for this repo
               RESULT=$(.bin/tools analyze-changes \
                 --work-dir ./el${{ matrix.version }} \
                 --changed-files $(echo "$CHANGED_FILES" | tr '\n' ' '))
