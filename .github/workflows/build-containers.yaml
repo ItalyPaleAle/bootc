@@ -117,10 +117,48 @@ jobs:
             -o ../.bin/tools
         working-directory: ./tools
 
+      # Detect changed files and determine which containers need rebuilding
+      - name: Analyze changes
+        id: analyze-changes
+        run: |
+          set -euo pipefail
+
+          # Get changed files between current commit and previous commit
+          # For the first commit or workflow_dispatch, analyze all files
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || ! git rev-parse HEAD^ >/dev/null 2>&1; then
+            echo "rebuild_all=true" >> "$GITHUB_OUTPUT"
+            echo "containers=[]" >> "$GITHUB_OUTPUT"
+          else
+            CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep "^el${{ matrix.version }}/" || true)
+
+            if [ -z "$CHANGED_FILES" ]; then
+              # No changes in this version directory, skip all builds
+              echo "rebuild_all=false" >> "$GITHUB_OUTPUT"
+              echo "containers=[]" >> "$GITHUB_OUTPUT"
+            else
+              # Analyze which containers need rebuilding
+              # Note: This assumes filenames don't contain spaces, which is true for this repo
+              RESULT=$(.bin/tools analyze-changes \
+                --work-dir ./el${{ matrix.version }} \
+                --changed-files $(echo "$CHANGED_FILES" | tr '\n' ' '))
+
+              REBUILD_ALL=$(echo "$RESULT" | jq -r '.rebuildAll')
+              CONTAINERS=$(echo "$RESULT" | jq -c '.containers')
+
+              echo "rebuild_all=$REBUILD_ALL" >> "$GITHUB_OUTPUT"
+              echo "containers=$CONTAINERS" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+          # Debug output
+          echo "Rebuild all: $(cat $GITHUB_OUTPUT | grep rebuild_all)"
+          echo "Containers to rebuild: $(cat $GITHUB_OUTPUT | grep containers)"
+
       # Build and push container image for base
       # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
       - name: "Build and push container image: base"
         id: build-and-push-base
+        if: steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'base')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -141,6 +179,7 @@ jobs:
       # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
       - name: "Build and push container image: tailscale"
         id: build-and-push-tailscale
+        if: steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'tailscale')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -161,6 +200,7 @@ jobs:
       # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
       - name: "Build and push container image: k3s"
         id: build-and-push-k3s
+        if: steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'k3s')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -181,6 +221,7 @@ jobs:
       # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
       - name: "Build and push container image: monitoring"
         id: build-and-push-monitoring
+        if: steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'monitoring')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -201,7 +242,7 @@ jobs:
       # For linux/amd64
       - name: "Build and push container image: zfs"
         id: build-and-push-zfs
-        if: matrix.baseImage != 'alma-linux-rpi'
+        if: matrix.baseImage != 'alma-linux-rpi' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'zfs'))
         run: |
           set -euo pipefail
           .bin/tools \
@@ -222,7 +263,7 @@ jobs:
       # For linux/amd64
       - name: "Build and push container image: monitoring-zfs"
         id: build-and-push-monitoring-zfs
-        if: matrix.baseImage != 'alma-linux-rpi'
+        if: matrix.baseImage != 'alma-linux-rpi' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'monitoring-zfs'))
         run: |
           set -euo pipefail
           .bin/tools \
@@ -243,7 +284,7 @@ jobs:
       # For linux/amd64 and linux/arm64 (or arm64 only for RPi) (Alma Linux only)
       - name: "Build and push container image: server"
         id: build-and-push-server
-        if: matrix.baseImage == 'alma-linux' || matrix.baseImage == 'alma-linux-rpi'
+        if: (matrix.baseImage == 'alma-linux' || matrix.baseImage == 'alma-linux-rpi') && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server'))
         run: |
           set -euo pipefail
           .bin/tools \
@@ -264,7 +305,7 @@ jobs:
       # For linux/amd64 (Alma Linux only)
       - name: "Build and push container image: server-zfs"
         id: build-and-push-server-zfs
-        if: matrix.baseImage == 'alma-linux'
+        if: matrix.baseImage == 'alma-linux' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-zfs'))
         run: |
           set -euo pipefail
           .bin/tools \
@@ -285,7 +326,7 @@ jobs:
       # For linux/amd64 and linux/arm64 (Alma Linux only)
       - name: "Build and push container image: server-worker"
         id: build-and-push-server-worker
-        if: matrix.baseImage == 'alma-linux'
+        if: matrix.baseImage == 'alma-linux' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-worker'))
         run: |
           set -euo pipefail
           .bin/tools \
@@ -306,7 +347,7 @@ jobs:
       # For linux/amd64 and linux/arm64 (Alma Linux only)
       - name: "Build and push container image: server-k3s"
         id: build-and-push-server-k3s
-        if: matrix.baseImage == 'alma-linux'
+        if: matrix.baseImage == 'alma-linux' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-k3s'))
         run: |
           set -euo pipefail
           .bin/tools \
@@ -327,7 +368,7 @@ jobs:
       # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-worker-zfs"
         id: build-and-push-server-worker-zfs
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux' && matrix.version == '10' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-worker-zfs'))
         run: |
           set -euo pipefail
           .bin/tools \
@@ -348,7 +389,7 @@ jobs:
       # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-k3s-zfs"
         id: build-and-push-server-k3s-zfs
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux' && matrix.version == '10' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-k3s-zfs'))
         run: |
           set -euo pipefail
           .bin/tools \
@@ -369,7 +410,7 @@ jobs:
       # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-mochi"
         id: build-and-push-server-mochi
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux' && matrix.version == '10' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-mochi'))
         run: |
           set -euo pipefail
           .bin/tools \
@@ -390,7 +431,7 @@ jobs:
       # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-atlas"
         id: build-and-push-server-atlas
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux' && matrix.version == '10' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-atlas'))
         run: |
           set -euo pipefail
           .bin/tools \
@@ -411,7 +452,7 @@ jobs:
       # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-boba"
         id: build-and-push-server-boba
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: matrix.baseImage == 'alma-linux' && matrix.version == '10' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-boba'))
         run: |
           set -euo pipefail
           .bin/tools \
@@ -429,6 +470,7 @@ jobs:
           echo "Digest=$(jq -r '.digest' .out/server-boba.json)" >> "$GITHUB_OUTPUT"
 
       - name: 'Container image attestation: tailscale'
+        if: steps.build-and-push-tailscale.outcome == 'success'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-tailscale.outputs.ImageName }}
@@ -436,6 +478,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: base'
+        if: steps.build-and-push-base.outcome == 'success'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-base.outputs.ImageName }}
@@ -443,6 +486,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: k3s'
+        if: steps.build-and-push-k3s.outcome == 'success'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-k3s.outputs.ImageName }}
@@ -450,6 +494,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: monitoring'
+        if: steps.build-and-push-monitoring.outcome == 'success'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-monitoring.outputs.ImageName }}
@@ -457,23 +502,23 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: zfs'
+        if: steps.build-and-push-zfs.outcome == 'success'
         uses: actions/attest-build-provenance@v1
-        if: matrix.baseImage != 'alma-linux-rpi'
         with:
           subject-name: ${{ steps.build-and-push-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-zfs.outputs.Digest }}
           push-to-registry: true
 
       - name: 'Container image attestation: monitoring-zfs'
+        if: steps.build-and-push-monitoring-zfs.outcome == 'success'
         uses: actions/attest-build-provenance@v1
-        if: matrix.baseImage != 'alma-linux-rpi'
         with:
           subject-name: ${{ steps.build-and-push-monitoring-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-monitoring-zfs.outputs.Digest }}
           push-to-registry: true
 
       - name: 'Container image attestation: server'
-        if: matrix.baseImage == 'alma-linux' || matrix.baseImage == 'alma-linux-rpi'
+        if: steps.build-and-push-server.outcome == 'success'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server.outputs.ImageName }}
@@ -481,7 +526,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-zfs'
-        if: matrix.baseImage == 'alma-linux'
+        if: steps.build-and-push-server-zfs.outcome == 'success'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-zfs.outputs.ImageName }}
@@ -489,7 +534,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-worker'
-        if: matrix.baseImage == 'alma-linux'
+        if: steps.build-and-push-server-worker.outcome == 'success'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-worker.outputs.ImageName }}
@@ -497,7 +542,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-k3s'
-        if: matrix.baseImage == 'alma-linux'
+        if: steps.build-and-push-server-k3s.outcome == 'success'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-k3s.outputs.ImageName }}
@@ -505,7 +550,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-worker-zfs'
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: steps.build-and-push-server-worker-zfs.outcome == 'success'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-worker-zfs.outputs.ImageName }}
@@ -513,7 +558,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-k3s-zfs'
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: steps.build-and-push-server-k3s-zfs.outcome == 'success'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-k3s-zfs.outputs.ImageName }}
@@ -521,7 +566,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-mochi'
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: steps.build-and-push-server-mochi.outcome == 'success'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-mochi.outputs.ImageName }}
@@ -529,7 +574,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-atlas'
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10'
+        if: steps.build-and-push-server-atlas.outcome == 'success'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-atlas.outputs.ImageName }}
@@ -537,7 +582,7 @@ jobs:
           push-to-registry: true
 
       - name: 'Container image attestation: server-boba'
-        if: matrix.baseImage == 'alma-linux'
+        if: steps.build-and-push-server-boba.outcome == 'success'
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ steps.build-and-push-server-boba.outputs.ImageName }}
