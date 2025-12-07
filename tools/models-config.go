@@ -26,6 +26,16 @@ func (c ConfigFile) String() string {
 	return string(j)
 }
 
+func (c *ConfigFile) getImageNameForContainer(containerFolder string) string {
+	for _, container := range c.containersMap {
+		containerPath := filepath.Base(filepath.Dir(container.SavePath))
+		if containerPath == containerFolder {
+			return container.ImageName
+		}
+	}
+	return ""
+}
+
 type Config_BaseImages struct {
 	Image  string `yaml:"image,omitempty"`
 	Tag    string `yaml:"tag,omitempty"`
