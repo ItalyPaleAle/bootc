@@ -107,14 +107,14 @@ func analyzeChanges(flags *analyzeChangesFlags, config *ConfigFile) (*analyzeCha
 			if len(parts) >= 2 {
 				containerPath := strings.Split(parts[1], "/")
 				if len(containerPath) > 0 {
-					containerName := containerPath[0]
+					containerFolderName := containerPath[0]
 					// Find the container by folder name
-					for _, c := range config.Containers {
-						if c == containerName {
-							// Get the actual image name for this container
-							if containerConfig, ok := config.containersMap[config.getImageNameForContainer(c)]; ok {
-								containersToRebuild[containerConfig.ImageName] = true
-							}
+					for _, containerConfig := range config.containersMap {
+						// Check if this container's directory matches
+						containerDir := filepath.Base(filepath.Dir(containerConfig.SavePath))
+						if containerDir == containerFolderName {
+							containersToRebuild[containerConfig.ImageName] = true
+							break
 						}
 					}
 				}
