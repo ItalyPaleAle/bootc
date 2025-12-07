@@ -122,7 +122,7 @@ jobs:
         id: analyze-changes
         run: |
           set -euo pipefail
-          
+
           # Get changed files between current commit and previous commit
           # For the first commit or workflow_dispatch, analyze all files
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] || ! git rev-parse HEAD^ >/dev/null 2>&1; then
@@ -130,7 +130,7 @@ jobs:
             echo "containers=[]" >> "$GITHUB_OUTPUT"
           else
             CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep "^el${{ matrix.version }}/" || true)
-            
+
             if [ -z "$CHANGED_FILES" ]; then
               # No changes in this version directory, skip all builds
               echo "rebuild_all=false" >> "$GITHUB_OUTPUT"
@@ -141,15 +141,15 @@ jobs:
               RESULT=$(.bin/tools analyze-changes \
                 --work-dir ./el${{ matrix.version }} \
                 --changed-files $(echo "$CHANGED_FILES" | tr '\n' ' '))
-              
+
               REBUILD_ALL=$(echo "$RESULT" | jq -r '.rebuildAll')
               CONTAINERS=$(echo "$RESULT" | jq -c '.containers')
-              
+
               echo "rebuild_all=$REBUILD_ALL" >> "$GITHUB_OUTPUT"
               echo "containers=$CONTAINERS" >> "$GITHUB_OUTPUT"
             fi
           fi
-          
+
           # Debug output
           echo "Rebuild all: $(cat $GITHUB_OUTPUT | grep rebuild_all)"
           echo "Containers to rebuild: $(cat $GITHUB_OUTPUT | grep containers)"
