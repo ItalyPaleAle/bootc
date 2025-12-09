@@ -1,6 +1,6 @@
 name: restic
 containerfile: Containerfile
-version: 0.18.1
+version: ull
 checksums: |-
   680838f19d67151adba227e1570cdd8af12c19cf1735783ed1ba928bc41f363d  restic_0.18.1_linux_amd64.bz2
   87f53fddde38764095e9c058a3b31834052c37e5826d2acf34e18923c006bd45  restic_0.18.1_linux_arm64.bz2
