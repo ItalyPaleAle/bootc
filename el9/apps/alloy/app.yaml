@@ -1,6 +1,6 @@
 name: alloy
 containerfile: Containerfile
-version: 1.12.1
+version: 1.12.2
 cmds:
   updateVersion: |
     curl -Ls "https://api.github.com/repos/grafana/alloy/releases/latest" \
