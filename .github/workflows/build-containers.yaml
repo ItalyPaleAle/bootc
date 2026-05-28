@@ -471,7 +471,7 @@ jobs:
 
       - name: 'Container image attestation: tailscale'
         if: steps.build-and-push-tailscale.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-tailscale.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-tailscale.outputs.Digest }}
@@ -479,7 +479,7 @@ jobs:
 
       - name: 'Container image attestation: base'
         if: steps.build-and-push-base.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-base.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-base.outputs.Digest }}
@@ -487,7 +487,7 @@ jobs:
 
       - name: 'Container image attestation: k3s'
         if: steps.build-and-push-k3s.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-k3s.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-k3s.outputs.Digest }}
@@ -495,7 +495,7 @@ jobs:
 
       - name: 'Container image attestation: monitoring'
         if: steps.build-and-push-monitoring.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-monitoring.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-monitoring.outputs.Digest }}
@@ -503,7 +503,7 @@ jobs:
 
       - name: 'Container image attestation: zfs'
         if: steps.build-and-push-zfs.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-zfs.outputs.Digest }}
@@ -511,7 +511,7 @@ jobs:
 
       - name: 'Container image attestation: monitoring-zfs'
         if: steps.build-and-push-monitoring-zfs.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-monitoring-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-monitoring-zfs.outputs.Digest }}
@@ -519,7 +519,7 @@ jobs:
 
       - name: 'Container image attestation: server'
         if: steps.build-and-push-server.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-server.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server.outputs.Digest }}
@@ -527,7 +527,7 @@ jobs:
 
       - name: 'Container image attestation: server-zfs'
         if: steps.build-and-push-server-zfs.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-server-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-zfs.outputs.Digest }}
@@ -535,7 +535,7 @@ jobs:
 
       - name: 'Container image attestation: server-worker'
         if: steps.build-and-push-server-worker.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-server-worker.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-worker.outputs.Digest }}
@@ -543,7 +543,7 @@ jobs:
 
       - name: 'Container image attestation: server-k3s'
         if: steps.build-and-push-server-k3s.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-server-k3s.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-k3s.outputs.Digest }}
@@ -551,7 +551,7 @@ jobs:
 
       - name: 'Container image attestation: server-worker-zfs'
         if: steps.build-and-push-server-worker-zfs.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-server-worker-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-worker-zfs.outputs.Digest }}
@@ -559,7 +559,7 @@ jobs:
 
       - name: 'Container image attestation: server-k3s-zfs'
         if: steps.build-and-push-server-k3s-zfs.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-server-k3s-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-k3s-zfs.outputs.Digest }}
@@ -567,7 +567,7 @@ jobs:
 
       - name: 'Container image attestation: server-mochi'
         if: steps.build-and-push-server-mochi.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-server-mochi.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-mochi.outputs.Digest }}
@@ -575,7 +575,7 @@ jobs:
 
       - name: 'Container image attestation: server-atlas'
         if: steps.build-and-push-server-atlas.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-server-atlas.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-atlas.outputs.Digest }}
@@ -583,7 +583,7 @@ jobs:
 
       - name: 'Container image attestation: server-boba'
         if: steps.build-and-push-server-boba.outcome == 'success'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest@v4
         with:
           subject-name: ${{ steps.build-and-push-server-boba.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-boba.outputs.Digest }}
