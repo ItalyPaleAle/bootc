@@ -1,9 +1,9 @@
 name: restic
 containerfile: Containerfile
-version: 0.18.1
+version: 0.19.0
 checksums: |-
-  680838f19d67151adba227e1570cdd8af12c19cf1735783ed1ba928bc41f363d  restic_0.18.1_linux_amd64.bz2
-  87f53fddde38764095e9c058a3b31834052c37e5826d2acf34e18923c006bd45  restic_0.18.1_linux_arm64.bz2
+  13176fe6d89d4357947a2cd107218ab2873a5f9d8e1ac2d4cd1c8e07e6839c21  restic_0.19.0_linux_amd64.bz2
+  e522ce6bf748d753fee8093e8ec59359972cf5b6bc65fc7c7cf38ae952351d91  restic_0.19.0_linux_arm64.bz2
 cmds:
   updateVersion: |
     curl -Ls "https://api.github.com/repos/restic/restic/releases/latest" \
