@@ -73,3 +73,4 @@ jobs:
           body-path: '.out/updated.md'
           labels: |
             automated pr
+            versions files
