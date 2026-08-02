@@ -20,10 +20,10 @@ RUN <<EOT
 
   # Work around https://github.com/tailscale/tailscale/issues/20498: the tailscale RPM doesn't pull in kernel-modules-extra, which ships the `xt_mark` module required for exit node / subnet router functionality
   # Skip on Raspberry Pi images: they use a different kernel package (e.g. raspberrypi2-kernel4) rather than "kernel", so there's no matching kernel-modules-extra to depmod against
-  KERNEL_VERSION="$(rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')"
-  if [ -n "${KERNEL_VERSION}" ]; then
+  if rpm -q kernel >/dev/null 2>&1; then
     dnf install -y kernel-modules-extra
-    depmod -a "${KERNEL_VERSION}"
+    # Installing kernel-modules-extra can pull in a newer kernel as a dependency, so re-check the installed version rather than reusing one queried before this install
+    depmod -a "$(rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')"
     echo "xt_mark" > /etc/modules-load.d/xt_mark.conf
   fi
 
