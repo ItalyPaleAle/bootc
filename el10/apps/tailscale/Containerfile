@@ -18,9 +18,7 @@ RUN <<EOT
   dnf config-manager --add-repo "https://pkgs.tailscale.com/stable/${REPO}/tailscale.repo"
   dnf install -y tailscale-${VERSION_TAILSCALE}
 
-  # Work around https://github.com/tailscale/tailscale/issues/20498: the
-  # tailscale RPM doesn't pull in kernel-modules-extra, which ships the
-  # xt_mark module required for exit node / subnet router functionality
+  # Work around https://github.com/tailscale/tailscale/issues/20498: the tailscale RPM doesn't pull in kernel-modules-extra, which ships the `xt_mark` module required for exit node / subnet router functionality
   dnf install -y kernel-modules-extra
 
   dnf clean all
