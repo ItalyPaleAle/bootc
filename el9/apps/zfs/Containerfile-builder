@@ -17,8 +17,38 @@ RUN <<EOT
   dnf install -y \
     jq make autoconf automake gcc libtool rpm-build libblkid-devel \
     libuuid-devel libudev-devel openssl-devel zlib-devel libaio-devel libattr-devel elfutils-libelf-devel \
-    kernel-${VERSION_KERNEL} kernel-modules-${VERSION_KERNEL} kernel-devel-${VERSION_KERNEL} \
+    kernel-${VERSION_KERNEL} kernel-modules-${VERSION_KERNEL} \
     python3 python3-devel python3-setuptools python3-packaging python3-cffi libffi-devel git libcurl-devel
+EOT
+
+# Install kernel-devel, matching the kernel of the base image
+RUN <<EOT
+  set -euxo pipefail
+
+  VERSION_KERNEL=$(rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')
+
+  # kernel-devel must match the kernel in the base image exactly, and that exact build is frequently not in the enabled repositories.
+  # CentOS Stream mirrors only carry the packages of the last few composes, and the kernel the bootc image was built with is often not one of them (e.g. the image ships 6.12.0-253.el10 while the mirror has 251 and 254).
+  if ! dnf install -y kernel-devel-${VERSION_KERNEL}; then
+    # Only CentOS Stream has an archive we can fall back to
+    if [ "$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"')" != "centos" ]; then
+      echo "Package kernel-devel-${VERSION_KERNEL} is not available in the enabled repositories" >&2
+      exit 1
+    fi
+
+    # Koji keeps every build forever, including a copy signed with the same key that signed the kernel already installed here, under data/signed/<short key id>/
+    KERNEL_NV=$(rpm -qa kernel --queryformat '%{VERSION}/%{RELEASE}')
+    KERNEL_ARCH=$(rpm -qa kernel --queryformat '%{ARCH}')
+    KERNEL_KEY=$(rpm -qa kernel --queryformat '%{RSAHEADER:pgpsig}' \
+      | sed -nE 's/.*[Kk]ey ID [0-9a-fA-F]{8}([0-9a-fA-F]{8}).*/\1/p')
+
+    curl -fsSL -o /tmp/kernel-devel.rpm \
+      "https://kojihub.stream.centos.org/kojifiles/packages/kernel/${KERNEL_NV}/data/signed/${KERNEL_KEY}/${KERNEL_ARCH}/kernel-devel-${VERSION_KERNEL}.rpm"
+    # Fails unless the package is signed with a key rpm already trusts
+    rpm --checksig /tmp/kernel-devel.rpm
+    dnf install -y /tmp/kernel-devel.rpm
+    rm -f /tmp/kernel-devel.rpm
+  fi
 EOT
 
 RUN <<EOT
