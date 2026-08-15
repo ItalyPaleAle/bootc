@@ -12,8 +12,10 @@ RUN <<EOT
   dnf install -y --enablerepo=epel \
     screen pv sqlite tmux jq rsync tree
 
-  # Set permissions on /run/screen, required by screen
-  chmod 0777 /run/screen
+  # Needed to get the right permissions on /run/screen on every boot
+  cat <<'CONF' > /etc/tmpfiles.d/screen.conf
+d /run/screen 0777 root root -
+CONF
 
   # Clean-up
   dnf clean all
