@@ -2,8 +2,8 @@ name: zfs
 containerfile: Containerfile
 builderContainerfiles:
   - Containerfile-builder
-version: 2.4.3
-checksums: 1f08f2d154f5189b5f1382848a32667b3d34066145b474c49cd3d41a5fba59a7  zfs-2.4.3.tar.gz
+version: 2.4.4
+checksums: 2a3c70d55a37cc71618a95a60e81ad66530201eb118d37741dc92efcf848c8b1  zfs-2.4.4.tar.gz
 cmds:
   updateVersion: |
     curl -Ls "https://api.github.com/repos/openzfs/zfs/releases/latest" \
