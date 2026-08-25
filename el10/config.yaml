@@ -2,7 +2,7 @@ baseImages:
   alma-linux-10:
     image: quay.io/almalinuxorg/almalinux-bootc
     tag: "10"
-    digest: sha256:d290f75f50112e1233f8619e0bfa76bf62424f6884d77959d22dcb56853d8c90
+    digest: sha256:157618ec55f471b67c8fa48f76275bbc48ad43ba6947a3d54c9c438c501ce2c4
   alma-linux-rpi-10:
     image: quay.io/almalinuxorg/almalinux-bootc-rpi
     tag: "10"
