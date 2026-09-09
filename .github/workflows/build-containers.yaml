@@ -4,6 +4,11 @@ on:
   push:
     branches: [ "main" ]
   workflow_dispatch:
+    inputs:
+      rebuild-all:
+        description: "Rebuild every container image, without analyzing what changed"
+        type: boolean
+        default: true
 
 env:
   # Docker registry
@@ -12,7 +17,191 @@ env:
   IMAGE_NAME_BASE: ${{ github.repository }}
 
 jobs:
+  # Determines which container images need to be rebuilt, by comparing the current commit with the
+  # one built by the previous successful run of this workflow
+  analyze-changes:
+
+    name: "Analyze changes"
+
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+      # Necessary for looking up the commit built by the previous run
+      actions: read
+
+    outputs:
+      # JSON array with one object per base image that has containers to rebuild, containing the
+      # "baseImage" and "version" of the image, and "containers" with the JSON-encoded list of
+      # containers to build, in the order they must be built in
+      matrix: ${{ steps.analyze-changes.outputs.matrix }}
+
+    env:
+      # All the base images that are built, and the version of Enterprise Linux they are based on
+      BUILD_MATRIX: |-
+        [
+          {"baseImage": "centos-stream", "version": "9"},
+          {"baseImage": "centos-stream", "version": "10"},
+          {"baseImage": "alma-linux", "version": "9"},
+          {"baseImage": "alma-linux", "version": "10"},
+          {"baseImage": "alma-linux-rpi", "version": "10"}
+        ]
+      # Containers that are only built for some of the base images: the ones that are not listed
+      # here are built for every base image they are defined for in the config files
+      CONTAINER_BASE_IMAGES: |-
+        {
+          "zfs": ["centos-stream-9", "centos-stream-10", "alma-linux-9", "alma-linux-10"],
+          "monitoring-zfs": ["centos-stream-9", "centos-stream-10", "alma-linux-9", "alma-linux-10"],
+          "server": ["alma-linux-9", "alma-linux-10", "alma-linux-rpi-10"],
+          "server-zfs": ["alma-linux-9", "alma-linux-10"],
+          "server-worker": ["alma-linux-9", "alma-linux-10"],
+          "server-k3s": ["alma-linux-9", "alma-linux-10"],
+          "server-worker-zfs": ["alma-linux-10"],
+          "server-k3s-zfs": ["alma-linux-10"],
+          "server-mochi": ["alma-linux-10"],
+          "server-atlas": ["alma-linux-10"],
+          "server-boba": ["alma-linux-10"]
+        }
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # The entire history is needed to diff against the commit built by the previous run
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: 'tools/go.mod'
+          cache-dependency-path: 'tools/go.sum'
+
+      # Compile the tools app
+      - name: Compile tools app
+        run: |
+          mkdir -p ../.bin
+          go build \
+            -v \
+            -o ../.bin/tools
+        working-directory: ./tools
+
+      # Find the commit that was built by the previous successful run of this workflow, which is
+      # the baseline the current commit is compared with.
+      # Using the previous *successful* run, rather than the previous commit, means that changes
+      # that were part of a run that failed are analyzed again.
+      - name: Find the previously-built commit
+        id: previous-run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Commit that was at the tip of the branch before this push
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          BASE_SHA=$(gh api \
+            -X GET \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/build-containers.yaml/runs" \
+            -f "branch=${GITHUB_REF_NAME}" \
+            -f "status=success" \
+            -f "per_page=20" \
+            --jq '[.workflow_runs[] | select(.head_sha != env.GITHUB_SHA) | .head_sha] | first // ""')
+
+          # The commit may no longer be in the history of the branch, for example after a force push
+          if [ -n "${BASE_SHA}" ] && ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            echo "Commit ${BASE_SHA} is not in the history of this branch, ignoring it"
+            BASE_SHA=""
+          fi
+
+          # Fall back to the commit that was at the tip of the branch before this push
+          if [ -z "${BASE_SHA}" ] && [ "${BEFORE_SHA}" != "0000000000000000000000000000000000000000" ] \
+            && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            BASE_SHA="${BEFORE_SHA}"
+          fi
+
+          echo "Comparing ${GITHUB_SHA} with ${BASE_SHA:-(nothing: all containers will be rebuilt)}"
+          echo "base_sha=${BASE_SHA}" >> "$GITHUB_OUTPUT"
+
+      # Determine which containers need to be rebuilt for each base image
+      - name: Analyze changes
+        id: analyze-changes
+        env:
+          BASE_SHA: ${{ steps.previous-run.outputs.base_sha }}
+          REBUILD_ALL: ${{ inputs.rebuild-all }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p .out/previous
+
+          # When there's no commit to compare with, or when a full rebuild was requested, all
+          # containers are rebuilt
+          REBUILD_ALL_FLAG=()
+          : > .out/changed-files.txt
+          if [ "${REBUILD_ALL}" = "true" ] || [ -z "${BASE_SHA}" ]; then
+            REBUILD_ALL_FLAG=(--rebuild-all)
+          else
+            # Use NUL as separator, so file names are never quoted or split
+            git diff --name-only -z "${BASE_SHA}" "${GITHUB_SHA}" > .out/changed-files.txt
+            echo "Changed files:"
+            tr '\0' '\n' < .out/changed-files.txt | sed 's/^/  /'
+          fi
+
+          MATRIX='[]'
+          while read -r BASE_IMAGE VERSION; do
+            # Pass the config file as it was in the commit we're comparing with, so the tool can
+            # tell which base images changed in it
+            PREVIOUS_CONFIG=()
+            if [ -n "${BASE_SHA}" ] && git cat-file -e "${BASE_SHA}:el${VERSION}/config.yaml" 2>/dev/null; then
+              git show "${BASE_SHA}:el${VERSION}/config.yaml" > ".out/previous/el${VERSION}-config.yaml"
+              PREVIOUS_CONFIG=(--previous-config ".out/previous/el${VERSION}-config.yaml")
+            fi
+
+            CONTAINERS=$(.bin/tools analyze-changes \
+              --work-dir "./el${VERSION}" \
+              --default-base-image "${BASE_IMAGE}-${VERSION}" \
+              --changed-files-file .out/changed-files.txt \
+              "${PREVIOUS_CONFIG[@]}" \
+              "${REBUILD_ALL_FLAG[@]}" \
+                | jq -c '.containers')
+
+            # Drop the containers that aren't built for this base image
+            CONTAINERS=$(jq -c \
+              --arg baseImage "${BASE_IMAGE}-${VERSION}" \
+              --argjson only "${CONTAINER_BASE_IMAGES}" \
+              'map(select($only[.] == null or ($only[.] | index($baseImage)) != null))' \
+              <<< "${CONTAINERS}")
+
+            if [ "${CONTAINERS}" = "[]" ]; then
+              continue
+            fi
+
+            MATRIX=$(jq -c \
+              --arg baseImage "${BASE_IMAGE}" \
+              --arg version "${VERSION}" \
+              --argjson containers "${CONTAINERS}" \
+              '. + [{baseImage: $baseImage, version: $version, containers: ($containers | tostring)}]' \
+              <<< "${MATRIX}")
+          done < <(jq -r '.[] | "\(.baseImage) \(.version)"' <<< "${BUILD_MATRIX}")
+
+          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+
+          # Add a summary of what is going to be built
+          {
+            echo "### Containers to build"
+            echo ""
+            if [ "${MATRIX}" = "[]" ]; then
+              echo "Nothing to build: nothing that impacts the container images changed."
+            else
+              jq -r '.[] | "- **\(.baseImage)-\(.version)**: `\(.containers | fromjson | join("`, `"))`"' <<< "${MATRIX}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
   build:
+
+    name: "Build ${{ matrix.baseImage }}-${{ matrix.version }}"
+
+    needs: analyze-changes
+
+    # Skip the entire job when there's nothing to build: an empty matrix is an error
+    if: needs.analyze-changes.outputs.matrix != '[]'
 
     runs-on: ubuntu-24.04
 
@@ -26,14 +215,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        baseImage:
-          - centos-stream
-          - alma-linux
-          - alma-linux-rpi
-        version: ['9', '10']
-        exclude:
-          - baseImage: 'alma-linux-rpi'
-            version: '9'
+        include: ${{ fromJson(needs.analyze-changes.outputs.matrix) }}
 
     steps:
       # From: https://github.com/containers/podman/discussions/25582
@@ -117,48 +299,11 @@ jobs:
             -o ../.bin/tools
         working-directory: ./tools
 
-      # Detect changed files and determine which containers need rebuilding
-      - name: Analyze changes
-        id: analyze-changes
-        run: |
-          set -euo pipefail
-
-          # Get changed files between current commit and previous commit
-          # For the first commit or workflow_dispatch, analyze all files
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || ! git rev-parse HEAD^ >/dev/null 2>&1; then
-            echo "rebuild_all=true" >> "$GITHUB_OUTPUT"
-            echo "containers=[]" >> "$GITHUB_OUTPUT"
-          else
-            CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep "^el${{ matrix.version }}/" || true)
-
-            if [ -z "$CHANGED_FILES" ]; then
-              # No changes in this version directory, skip all builds
-              echo "rebuild_all=false" >> "$GITHUB_OUTPUT"
-              echo "containers=[]" >> "$GITHUB_OUTPUT"
-            else
-              # Analyze which containers need rebuilding
-              # Note: This assumes filenames don't contain spaces, which is true for this repo
-              RESULT=$(.bin/tools analyze-changes \
-                --work-dir ./el${{ matrix.version }} \
-                --changed-files $(echo "$CHANGED_FILES" | tr '\n' ' '))
-
-              REBUILD_ALL=$(echo "$RESULT" | jq -r '.rebuildAll')
-              CONTAINERS=$(echo "$RESULT" | jq -c '.containers')
-
-              echo "rebuild_all=$REBUILD_ALL" >> "$GITHUB_OUTPUT"
-              echo "containers=$CONTAINERS" >> "$GITHUB_OUTPUT"
-            fi
-          fi
-
-          # Debug output
-          echo "Rebuild all: $(cat $GITHUB_OUTPUT | grep rebuild_all)"
-          echo "Containers to rebuild: $(cat $GITHUB_OUTPUT | grep containers)"
-
       # Build and push container image for base
       # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
       - name: "Build and push container image: base"
         id: build-and-push-base
-        if: steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'base')
+        if: contains(fromJson(matrix.containers), 'base')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -179,7 +324,7 @@ jobs:
       # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
       - name: "Build and push container image: tailscale"
         id: build-and-push-tailscale
-        if: steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'tailscale')
+        if: contains(fromJson(matrix.containers), 'tailscale')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -200,7 +345,7 @@ jobs:
       # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
       - name: "Build and push container image: k3s"
         id: build-and-push-k3s
-        if: steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'k3s')
+        if: contains(fromJson(matrix.containers), 'k3s')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -221,7 +366,7 @@ jobs:
       # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
       - name: "Build and push container image: monitoring"
         id: build-and-push-monitoring
-        if: steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'monitoring')
+        if: contains(fromJson(matrix.containers), 'monitoring')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -242,7 +387,7 @@ jobs:
       # For linux/amd64
       - name: "Build and push container image: zfs"
         id: build-and-push-zfs
-        if: matrix.baseImage != 'alma-linux-rpi' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'zfs'))
+        if: contains(fromJson(matrix.containers), 'zfs')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -263,7 +408,7 @@ jobs:
       # For linux/amd64
       - name: "Build and push container image: monitoring-zfs"
         id: build-and-push-monitoring-zfs
-        if: matrix.baseImage != 'alma-linux-rpi' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'monitoring-zfs'))
+        if: contains(fromJson(matrix.containers), 'monitoring-zfs')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -284,7 +429,7 @@ jobs:
       # For linux/amd64 and linux/arm64 (or arm64 only for RPi) (Alma Linux only)
       - name: "Build and push container image: server"
         id: build-and-push-server
-        if: (matrix.baseImage == 'alma-linux' || matrix.baseImage == 'alma-linux-rpi') && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server'))
+        if: contains(fromJson(matrix.containers), 'server')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -305,7 +450,7 @@ jobs:
       # For linux/amd64 (Alma Linux only)
       - name: "Build and push container image: server-zfs"
         id: build-and-push-server-zfs
-        if: matrix.baseImage == 'alma-linux' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-zfs'))
+        if: contains(fromJson(matrix.containers), 'server-zfs')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -326,7 +471,7 @@ jobs:
       # For linux/amd64 and linux/arm64 (Alma Linux only)
       - name: "Build and push container image: server-worker"
         id: build-and-push-server-worker
-        if: matrix.baseImage == 'alma-linux' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-worker'))
+        if: contains(fromJson(matrix.containers), 'server-worker')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -347,7 +492,7 @@ jobs:
       # For linux/amd64 and linux/arm64 (Alma Linux only)
       - name: "Build and push container image: server-k3s"
         id: build-and-push-server-k3s
-        if: matrix.baseImage == 'alma-linux' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-k3s'))
+        if: contains(fromJson(matrix.containers), 'server-k3s')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -368,7 +513,7 @@ jobs:
       # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-worker-zfs"
         id: build-and-push-server-worker-zfs
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-worker-zfs'))
+        if: contains(fromJson(matrix.containers), 'server-worker-zfs')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -389,7 +534,7 @@ jobs:
       # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-k3s-zfs"
         id: build-and-push-server-k3s-zfs
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-k3s-zfs'))
+        if: contains(fromJson(matrix.containers), 'server-k3s-zfs')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -410,7 +555,7 @@ jobs:
       # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-mochi"
         id: build-and-push-server-mochi
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-mochi'))
+        if: contains(fromJson(matrix.containers), 'server-mochi')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -431,7 +576,7 @@ jobs:
       # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-atlas"
         id: build-and-push-server-atlas
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-atlas'))
+        if: contains(fromJson(matrix.containers), 'server-atlas')
         run: |
           set -euo pipefail
           .bin/tools \
@@ -452,7 +597,7 @@ jobs:
       # For linux/amd64 (Alma Linux 10 only)
       - name: "Build and push container image: server-boba"
         id: build-and-push-server-boba
-        if: matrix.baseImage == 'alma-linux' && matrix.version == '10' && (steps.analyze-changes.outputs.rebuild_all == 'true' || contains(fromJson(steps.analyze-changes.outputs.containers), 'server-boba'))
+        if: contains(fromJson(matrix.containers), 'server-boba')
         run: |
           set -euo pipefail
           .bin/tools \

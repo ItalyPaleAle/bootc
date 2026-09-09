@@ -114,6 +114,25 @@ func LoadConfigFile(workDir string, configFileName string, overrideFileName stri
 	return config, nil
 }
 
+// LoadConfigSnapshot loads a config file without loading the containers and apps it references.
+// It's meant to load the config file as it was in a previous commit, when the containers and apps
+// it references may no longer exist on disk.
+func LoadConfigSnapshot(configFile string) (*ConfigFile, error) {
+	config := &ConfigFile{
+		Folders: Config_Folders{
+			Apps:       "apps",
+			Containers: "containers",
+		},
+		SavePath: configFile,
+	}
+	err := loadYamlFile(config, configFile)
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
 func loadYamlFile(dest any, fileName string) error {
 	f, err := os.Open(fileName)
 	if err != nil {

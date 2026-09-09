@@ -177,6 +177,26 @@ To build images locally, you will need these tools installed:
       --tag "$(date +"%Y%m%d")"
    ```
 
+### Automated builds
+
+The [Build Containers](./.github/workflows/build-containers.yaml) workflow only rebuilds the images that a change impacts, comparing the current commit with the one built by the previous successful run of the workflow. An image is rebuilt when:
+
+- The base image it's built on changed in the config file, and it's the base image being built (for example, a new digest for `alma-linux-10` doesn't rebuild the CentOS Stream images).
+- One of the apps it includes changed.
+- One of the files in its folder changed.
+- The image it's built on top of is being rebuilt.
+
+Changes to the [tools](./tools/) or to the workflow itself rebuild every image, and so does running the workflow manually with the "Rebuild every container image" option.
+
+The `analyze-changes` command implements this, and can be run locally to see what a set of changes would rebuild:
+
+```sh
+.bin/tools analyze-changes \
+   --work-dir ./el10 \
+   --default-base-image "alma-linux-10" \
+   --changed-files el10/apps/tailscale/app.yaml
+```
+
 ## Use with RHEL
 
 The Containerfiles are compatible with RHEL too, currently supporting RHEL 10 and 9. Due to licensing reasons, the RHEL-based images are not published from this repo automatically.
