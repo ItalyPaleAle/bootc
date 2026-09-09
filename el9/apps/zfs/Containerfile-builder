@@ -27,8 +27,9 @@ RUN <<EOT
 
   VERSION_KERNEL=$(rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')
 
-  # Downloads the exact build of a kernel subpackage from the distribution's archive and installs it, for when it is no longer in the enabled repositories.
-  # CentOS Stream mirrors only carry the packages of the last few composes, and AlmaLinux drops superseded builds from its repository metadata, but both keep the RPMs: Koji keeps every build forever, including a copy signed with the same key that signed the kernel already installed here, under data/signed/<short key id>/, and AlmaLinux keeps them in the package directory of the release they shipped with, which moves to the vault once that release is superseded.
+  # Installs one subpackage of the kernel already in this image, at that exact build, when it is no longer in the enabled repositories
+  # CentOS Stream mirrors only carry the packages of the last few composes, and AlmaLinux drops superseded builds from its repository metadata
+  # Both keep the RPMs themselves, so fall back to the archive that holds them
   install_kernel_package_from_archive() {
     PKG="$1"
     KERNEL_ARCH=$(rpm -qa kernel --queryformat '%{ARCH}')
@@ -38,13 +39,15 @@ RUN <<EOT
     URLS=""
     case "${OS_ID}" in
       centos)
+        # Koji keeps every build forever, including a copy signed with the same key that signed the kernel already installed here, under data/signed/<short key id>/
         KERNEL_NV=$(rpm -qa kernel --queryformat '%{VERSION}/%{RELEASE}')
         KERNEL_KEY=$(rpm -qa kernel --queryformat '%{RSAHEADER:pgpsig}' \
           | sed -nE 's/.*[Kk]ey ID [0-9a-fA-F]{8}([0-9a-fA-F]{8}).*/\1/p')
         URLS="https://kojihub.stream.centos.org/kojifiles/packages/kernel/${KERNEL_NV}/data/signed/${KERNEL_KEY}/${KERNEL_ARCH}/${PKG}-${VERSION_KERNEL}.rpm"
         ;;
       almalinux)
-        # The kernel packages are in BaseOS and the kernel-devel ones in AppStream, so try both, in the tree of the release this image is from and then in the vault
+        # The kernel packages are in BaseOS and the kernel-devel ones in AppStream, so try both rather than map each package to its repository
+        # The release this image is from is in the main tree until it is superseded, and in the vault from then on
         for TREE in "almalinux/${OS_VERSION_ID}" "vault/${OS_VERSION_ID}"; do
           for REPO in BaseOS AppStream; do
             URLS="${URLS} https://repo.almalinux.org/${TREE}/${REPO}/${KERNEL_ARCH}/os/Packages/${PKG}-${VERSION_KERNEL}.rpm"
@@ -70,8 +73,9 @@ RUN <<EOT
     return 1
   }
 
-  # Both packages must match the kernel in the base image exactly, and that exact build is frequently not in the enabled repositories (e.g. the image ships 5.14.0-730.el9 while the repositories have 742).
-  # kernel-devel-matched is a dependency of dkms, which is installed below: if it isn't already present at this version, dnf installs the newest one, which requires - and therefore upgrades to - a newer kernel, and ZFS would be built for a kernel that isn't the one in the image.
+  # Both must match the kernel in the base image exactly, and that exact build is frequently not in the enabled repositories (e.g. the image ships 5.14.0-730.el9 while the repositories have 742)
+  # kernel-devel-matched is here because dkms, installed in the next step, depends on it
+  # Left to dnf there, it comes in at the newest version, which requires - and so upgrades to - a newer kernel, and ZFS ends up built for a kernel that isn't in the image
   for PKG in kernel-devel kernel-devel-matched; do
     dnf install -y ${PKG}-${VERSION_KERNEL} || install_kernel_package_from_archive ${PKG}
   done
