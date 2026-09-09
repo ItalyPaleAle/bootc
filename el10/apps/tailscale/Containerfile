@@ -21,9 +21,33 @@ RUN <<EOT
   # Work around https://github.com/tailscale/tailscale/issues/20498: the tailscale RPM doesn't pull in kernel-modules-extra, which ships the `xt_mark` module required for exit node / subnet router functionality
   # Skip on Raspberry Pi images: they use a different kernel package (e.g. raspberrypi2-kernel4) rather than "kernel", so there's no matching kernel-modules-extra to depmod against
   if rpm -q kernel >/dev/null 2>&1; then
-    dnf install -y kernel-modules-extra
-    # Installing kernel-modules-extra can pull in a newer kernel as a dependency, so re-check the installed version rather than reusing one queried before this install
-    depmod -a "$(rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')"
+    VERSION_KERNEL=$(rpm -qa kernel --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}')
+
+    # The version must be pinned to the kernel that is already in the image: an unversioned install resolves to whatever the repositories carry, which is regularly newer than the kernel of the base image, and dnf then upgrades the entire kernel package set.
+    # The image would boot a kernel that the out-of-tree modules built against the base image's kernel (ZFS) were not compiled for, and nothing in the build would fail.
+    # That exact build is frequently not in the enabled repositories, so fall back to Koji, the same way the ZFS builder does for kernel-devel.
+    if ! dnf install -y kernel-modules-extra-${VERSION_KERNEL}; then
+      # Only CentOS Stream has an archive we can fall back to
+      if [ "$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"')" != "centos" ]; then
+        echo "Package kernel-modules-extra-${VERSION_KERNEL} is not available in the enabled repositories" >&2
+        exit 1
+      fi
+
+      # Koji keeps every build forever, including a copy signed with the same key that signed the kernel already installed here, under data/signed/<short key id>/
+      KERNEL_NV=$(rpm -qa kernel --queryformat '%{VERSION}/%{RELEASE}')
+      KERNEL_ARCH=$(rpm -qa kernel --queryformat '%{ARCH}')
+      KERNEL_KEY=$(rpm -qa kernel --queryformat '%{RSAHEADER:pgpsig}' \
+        | sed -nE 's/.*[Kk]ey ID [0-9a-fA-F]{8}([0-9a-fA-F]{8}).*/\1/p')
+
+      curl -fsSL -o /tmp/kernel-modules-extra.rpm \
+        "https://kojihub.stream.centos.org/kojifiles/packages/kernel/${KERNEL_NV}/data/signed/${KERNEL_KEY}/${KERNEL_ARCH}/kernel-modules-extra-${VERSION_KERNEL}.rpm"
+      # Fails unless the package is signed with a key rpm already trusts
+      rpm --checksig /tmp/kernel-modules-extra.rpm
+      dnf install -y /tmp/kernel-modules-extra.rpm
+      rm -f /tmp/kernel-modules-extra.rpm
+    fi
+
+    depmod -a "${VERSION_KERNEL}"
     echo "xt_mark" > /etc/modules-load.d/xt_mark.conf
   fi
 
