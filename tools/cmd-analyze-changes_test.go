@@ -8,8 +8,7 @@ import (
 	"testing"
 )
 
-// Tests run against the configuration of the repository itself, in el9 and el10, from the root of
-// the repository (which is where the workflow invokes the tool from).
+// Tests run against the configuration of the repository itself, from its root, which is where the workflow invokes the tool from
 const (
 	el9WorkDir  = "el9"
 	el10WorkDir = "el10"
@@ -18,19 +17,18 @@ const (
 func TestAnalyzeChanges(t *testing.T) {
 	t.Chdir("..")
 
-	// Previous version of el10/config.yaml, before the digests of alma-linux-10 and
-	// alma-linux-rpi-10 were updated: this is the change in PR #284
+	// el10/config.yaml before the digests of alma-linux-10 and alma-linux-rpi-10 were updated, which is the change in PR #284
 	el10PreviousDigests := writeFile(t, replaceInFile(t, filepath.Join(el10WorkDir, "config.yaml"),
 		"sha256:7e5beb82eeec8f233471d48f3eba148c5c1eb37590383d64034f26b502ca7d5a", "sha256:0000000000000000000000000000000000000000000000000000000000000001",
 		"sha256:98de1bccf5d9628552edaedc03145d35bb9bcb0265d9d5a4a6bc0b0c7f9dbf4a", "sha256:0000000000000000000000000000000000000000000000000000000000000002",
 	))
 
-	// Previous version of el10/config.yaml, before server-mochi was added to the list of containers
+	// el10/config.yaml before server-mochi was added to the list of containers
 	el10PreviousContainers := writeFile(t, replaceInFile(t, filepath.Join(el10WorkDir, "config.yaml"),
 		"  - server-mochi\n", "",
 	))
 
-	// Previous version of el10/config.yaml, identical to the current one
+	// el10/config.yaml with no change at all
 	el10SameConfig := writeFile(t, readFile(t, filepath.Join(el10WorkDir, "config.yaml")))
 
 	allEl10 := []string{
@@ -48,8 +46,7 @@ func TestAnalyzeChanges(t *testing.T) {
 		rebuildAll       bool
 		expect           []string
 	}{
-		// PR #284: only the digests of the alma-linux-10 and alma-linux-rpi-10 base images changed,
-		// so only the containers built on those base images must be rebuilt
+		// PR #284: only the digests of alma-linux-10 and alma-linux-rpi-10 changed, so the CentOS Stream images must not be rebuilt
 		{
 			name:             "base image digest changed: alma-linux-10",
 			workDir:          el10WorkDir,
@@ -82,8 +79,7 @@ func TestAnalyzeChanges(t *testing.T) {
 			expect:           nil,
 		},
 
-		// PR #280: the cloudflared app changed in both el9 and el10, so all the containers that use
-		// it must be rebuilt
+		// PR #280: the cloudflared app changed in both el9 and el10, so every container that uses it must be rebuilt
 		{
 			name:             "app changed: cloudflared in el10",
 			workDir:          el10WorkDir,
@@ -279,8 +275,7 @@ func TestAnalyzeChangesReadChangedFilesFile(t *testing.T) {
 	}
 }
 
-// assertBuildOrder checks that every container is listed after the container it's based on, so the
-// list can be built in order.
+// assertBuildOrder checks that every container is listed after the container it's based on, so the list can be built in order
 func assertBuildOrder(t *testing.T, config *ConfigFile, containers []string) {
 	t.Helper()
 
@@ -306,7 +301,7 @@ func readFile(t *testing.T, path string) string {
 	return string(read)
 }
 
-// replaceInFile returns the content of a file with the given pairs of old and new strings replaced.
+// replaceInFile returns the content of a file with the given pairs of old and new strings replaced
 func replaceInFile(t *testing.T, path string, oldNew ...string) string {
 	t.Helper()
 
@@ -320,7 +315,7 @@ func replaceInFile(t *testing.T, path string, oldNew ...string) string {
 	return content
 }
 
-// writeFile writes the content to a temporary file and returns its path.
+// writeFile writes the content to a temporary file and returns its path
 func writeFile(t *testing.T, content string) string {
 	t.Helper()
 

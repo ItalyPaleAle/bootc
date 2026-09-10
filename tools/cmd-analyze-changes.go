@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Files that are not part of a work dir, but that still require rebuilding every container.
+// Files outside of any work dir that impact every container
 const (
 	// Path of the workflow that builds the containers, relative to the root of the repository
 	buildWorkflowFile = ".github/workflows/build-containers.yaml"
@@ -29,25 +29,22 @@ func init() {
 		Use:   "analyze-changes",
 		Short: "Analyze changed files and determine which containers need rebuilding",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Validate flags
 			err := flags.Validate()
 			if err != nil {
 				return err
 			}
 
-			// Load the config file
 			config, err := LoadConfigFile(flags.WorkDir, "config.yaml", "config.override.yaml")
 			if err != nil {
 				return fmt.Errorf("failed to load config file: %w", err)
 			}
 
-			// Analyze changes
 			result, err := analyzeChanges(flags, config)
 			if err != nil {
 				return fmt.Errorf("failed to analyze changes: %w", err)
 			}
 
-			// Print a human-readable summary on stderr, and the machine-readable result on stdout
+			// The summary goes to stderr so stdout stays parseable by the workflow
 			result.PrintSummary(os.Stderr, flags)
 			fmt.Println(result)
 
@@ -84,8 +81,8 @@ func (f *analyzeChangesFlags) Validate() error {
 	return nil
 }
 
-// WorkDirPrefix returns the path of the work dir relative to the root of the repository, which is
-// the prefix the changed files in this work dir have. It's empty when the work dir is the root.
+// WorkDirPrefix returns the path of the work dir relative to the root of the repository, which is the prefix of the changed files that belong to it.
+// It's empty when the work dir is the root of the repository.
 func (f *analyzeChangesFlags) WorkDirPrefix() string {
 	p := path.Clean(filepath.ToSlash(f.WorkDir))
 	if p == "." || p == "/" {
@@ -94,8 +91,7 @@ func (f *analyzeChangesFlags) WorkDirPrefix() string {
 	return strings.TrimPrefix(p, "/")
 }
 
-// ReadChangedFiles returns the list of changed files, from both the --changed-files and the
-// --changed-files-file flags.
+// ReadChangedFiles returns the changed files from both the --changed-files and --changed-files-file flags
 func (f *analyzeChangesFlags) ReadChangedFiles() ([]string, error) {
 	files := make([]string, 0, len(f.ChangedFiles))
 	files = append(files, f.ChangedFiles...)
@@ -106,8 +102,7 @@ func (f *analyzeChangesFlags) ReadChangedFiles() ([]string, error) {
 			return nil, fmt.Errorf("failed to read file '%s': %w", f.ChangedFilesFile, err)
 		}
 
-		// Entries can be separated by newlines or, when the list comes from "git diff -z", by NUL
-		// characters
+		// Entries are separated by newlines, or by NUL characters when the list comes from "git diff -z"
 		for _, line := range strings.FieldsFunc(string(read), func(r rune) bool {
 			return r == '\n' || r == '\r' || r == 0
 		}) {
@@ -130,16 +125,14 @@ func (f *analyzeChangesFlags) ReadChangedFiles() ([]string, error) {
 type analyzeChangesResult struct {
 	// True if all containers are rebuilt because of a change that could impact any of them
 	RebuildAll bool `json:"rebuildAll"`
-	// Folder names of the containers that need to be rebuilt, in the order they are defined in the
-	// config file (so containers are always built after the ones they are based on)
+	// Folder names of the containers to rebuild, each one after the container it's built on
 	Containers []string `json:"containers"`
 	// Maps each container in Containers to the reasons why it's being rebuilt
 	Reasons map[string][]string `json:"reasons,omitempty"`
 }
 
 func (r analyzeChangesResult) String() string {
-	// This is only used for output, so we can safely ignore the error
-	// as the struct is simple and will always marshal successfully
+	// The error is ignored: this struct only holds strings, bools, and maps of them, so it always marshals
 	j, _ := json.MarshalIndent(r, "", "  ")
 	return string(j)
 }
@@ -164,7 +157,7 @@ func analyzeChanges(flags *analyzeChangesFlags, config *ConfigFile) (*analyzeCha
 	return a.Analyze()
 }
 
-// changeAnalyzer determines which containers need to be rebuilt after a set of files changed.
+// changeAnalyzer determines which containers need to be rebuilt after a set of files changed
 type changeAnalyzer struct {
 	flags  *analyzeChangesFlags
 	config *ConfigFile
@@ -190,8 +183,7 @@ func newChangeAnalyzer(flags *analyzeChangesFlags, config *ConfigFile) (*changeA
 		reasons:           make(map[string][]string, len(config.Containers)),
 	}
 
-	// The config file lists containers by folder name, while containersMap is keyed by image name,
-	// so we need to map one to the other
+	// The config file lists containers by folder name, while containersMap is keyed by image name
 	for _, container := range config.containersMap {
 		folder := filepath.Base(filepath.Dir(container.SavePath))
 		a.byFolder[folder] = container
@@ -222,8 +214,7 @@ func (a *changeAnalyzer) Analyze() (*analyzeChangesResult, error) {
 		return a.rebuildAll(changes.all), nil
 	}
 
-	// When the config file changed, compare it with its previous version to understand what changed
-	// in it: a new base image digest only impacts the containers built on that base image
+	// A new digest in the config file only impacts the containers built on that base image, so compare the file with its previous version
 	if changes.config {
 		err = a.analyzeConfigChanges(changes)
 		if err != nil {
@@ -258,7 +249,7 @@ func (a *changeAnalyzer) Analyze() (*analyzeChangesResult, error) {
 	return a.result(), nil
 }
 
-// changeSet contains the changes detected in the list of changed files.
+// changeSet contains the changes detected in the list of changed files
 type changeSet struct {
 	// When not empty, contains the reason why all containers must be rebuilt
 	all string
@@ -272,9 +263,8 @@ type changeSet struct {
 	baseImages map[string]bool
 }
 
-// classifyChanges maps each changed file to the container, app, or base image it impacts.
-// Files that belong to another work dir, or that don't impact any container (such as the README),
-// are ignored.
+// classifyChanges maps each changed file to the container or app it impacts.
+// Files in another work dir, and files that impact no container such as the README, are ignored.
 func (a *changeAnalyzer) classifyChanges(files []string) *changeSet {
 	changes := &changeSet{
 		containers: make(map[string]bool),
@@ -323,8 +313,7 @@ func (a *changeAnalyzer) classifyChanges(files []string) *changeSet {
 	return changes
 }
 
-// analyzeConfigChanges compares the config file with its previous version, to determine which base
-// images changed and which containers were added.
+// analyzeConfigChanges compares the config file with its previous version, to find which base images changed and which containers were added
 func (a *changeAnalyzer) analyzeConfigChanges(changes *changeSet) error {
 	if a.flags.PreviousConfig == "" {
 		changes.all = "the config file changed and its previous version is not available"
@@ -363,8 +352,7 @@ func (a *changeAnalyzer) analyzeConfigChanges(changes *changeSet) error {
 	return nil
 }
 
-// rootBaseImage returns the name of the base image, from the config file, that a container is
-// ultimately built on, following the chain of containers it's based on.
+// rootBaseImage follows the chain of containers a container is built on, and returns the base image from the config file at the end of it
 func (a *changeAnalyzer) rootBaseImage(folder string) string {
 	// Guard against loops in the configuration
 	seen := make(map[string]bool, len(a.folders))
@@ -392,8 +380,7 @@ func (a *changeAnalyzer) rootBaseImage(folder string) string {
 	return ""
 }
 
-// markDependents marks all the containers that are built, directly or indirectly, on top of a
-// container that is being rebuilt.
+// markDependents marks every container built, directly or indirectly, on top of a container that is being rebuilt
 func (a *changeAnalyzer) markDependents() {
 	for changed := true; changed; {
 		changed = false
@@ -463,12 +450,12 @@ func (a *changeAnalyzer) result() *analyzeChangesResult {
 	return res
 }
 
-// hasFolderPrefix reports whether path is inside the given folder.
+// hasFolderPrefix reports whether path is inside the given folder
 func hasFolderPrefix(p string, folder string) bool {
 	return folder != "" && strings.HasPrefix(p, folder+"/")
 }
 
-// relativeToFolder returns the path relative to the given folder, and whether the path is inside it.
+// relativeToFolder returns the path relative to the given folder, and whether the path is inside it
 func relativeToFolder(p string, folder string) (string, bool) {
 	if folder == "" {
 		return p, true
@@ -479,7 +466,7 @@ func relativeToFolder(p string, folder string) (string, bool) {
 	return p[len(folder)+1:], true
 }
 
-// splitFirstSegment splits a path into its first segment and the rest.
+// splitFirstSegment splits a path into its first segment and the rest
 func splitFirstSegment(p string) (string, string) {
 	first, rest, _ := strings.Cut(p, "/")
 	return first, rest

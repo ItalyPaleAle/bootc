@@ -115,8 +115,7 @@ func LoadConfigFile(workDir string, configFileName string, overrideFileName stri
 }
 
 // LoadConfigSnapshot loads a config file without loading the containers and apps it references.
-// It's meant to load the config file as it was in a previous commit, when the containers and apps
-// it references may no longer exist on disk.
+// The config file of a previous commit can reference containers and apps that no longer exist on disk.
 func LoadConfigSnapshot(configFile string) (*ConfigFile, error) {
 	config := &ConfigFile{
 		Folders: Config_Folders{

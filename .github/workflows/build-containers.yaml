@@ -17,8 +17,7 @@ env:
   IMAGE_NAME_BASE: ${{ github.repository }}
 
 jobs:
-  # Determines which container images need to be rebuilt, by comparing the current commit with the
-  # one built by the previous successful run of this workflow
+  # Determines which container images need to be rebuilt, comparing the current commit with the one built by the previous successful run
   analyze-changes:
 
     name: "Analyze changes"
@@ -31,9 +30,9 @@ jobs:
       actions: read
 
     outputs:
-      # JSON array with one object per base image that has containers to rebuild, containing the
-      # "baseImage" and "version" of the image, and "containers" with the JSON-encoded list of
-      # containers to build, in the order they must be built in
+      # JSON array with one object per base image that has containers to rebuild.
+      # Each one carries the "baseImage" and "version" of the image, and "containers" with the JSON-encoded list of containers to build.
+      # The containers are in the order they must be built in.
       matrix: ${{ steps.analyze-changes.outputs.matrix }}
 
     env:
@@ -46,8 +45,8 @@ jobs:
           {"baseImage": "alma-linux", "version": "10"},
           {"baseImage": "alma-linux-rpi", "version": "10"}
         ]
-      # Containers that are only built for some of the base images: the ones that are not listed
-      # here are built for every base image they are defined for in the config files
+      # Containers that are only built for some of the base images.
+      # The ones that aren't listed here are built for every base image they're defined for in the config files.
       CONTAINER_BASE_IMAGES: |-
         {
           "zfs": ["centos-stream-9", "centos-stream-10", "alma-linux-9", "alma-linux-10"],
@@ -84,10 +83,8 @@ jobs:
             -o ../.bin/tools
         working-directory: ./tools
 
-      # Find the commit that was built by the previous successful run of this workflow, which is
-      # the baseline the current commit is compared with.
-      # Using the previous *successful* run, rather than the previous commit, means that changes
-      # that were part of a run that failed are analyzed again.
+      # Find the commit built by the previous successful run of this workflow, which is the baseline the current commit is compared with.
+      # Using the previous successful run, rather than the previous commit, means changes that were part of a failed run are analyzed again.
       - name: Find the previously-built commit
         id: previous-run
         env:
@@ -131,8 +128,7 @@ jobs:
 
           mkdir -p .out/previous
 
-          # When there's no commit to compare with, or when a full rebuild was requested, all
-          # containers are rebuilt
+          # With no commit to compare with, or when a full rebuild was requested, every container is rebuilt
           REBUILD_ALL_FLAG=()
           : > .out/changed-files.txt
           if [ "${REBUILD_ALL}" = "true" ] || [ -z "${BASE_SHA}" ]; then
@@ -146,8 +142,7 @@ jobs:
 
           MATRIX='[]'
           while read -r BASE_IMAGE VERSION; do
-            # Pass the config file as it was in the commit we're comparing with, so the tool can
-            # tell which base images changed in it
+            # Pass the config file as it was in the commit we're comparing with, so the tool can tell which base images changed in it
             PREVIOUS_CONFIG=()
             if [ -n "${BASE_SHA}" ] && git cat-file -e "${BASE_SHA}:el${VERSION}/config.yaml" 2>/dev/null; then
               git show "${BASE_SHA}:el${VERSION}/config.yaml" > ".out/previous/el${VERSION}-config.yaml"
