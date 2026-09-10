@@ -1,6 +1,0 @@
-imageName: 'server-atlas'
-baseImage: 'server-zfs' # ../server-zfs
-# server-atlas is only published for Alma Linux 10, so this work dir builds it for nothing
-baseImages: []
-apps:
-  - 'cloudflared'

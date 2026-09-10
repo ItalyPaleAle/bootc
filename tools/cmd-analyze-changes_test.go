@@ -88,11 +88,11 @@ func TestAnalyzeChanges(t *testing.T) {
 			expect:           []string{"server-atlas", "server-boba"},
 		},
 		{
-			name:             "app changed: cloudflared in el9",
+			name:             "app changed: cloudflared in el9, where no container uses it",
 			workDir:          el9WorkDir,
 			defaultBaseImage: "alma-linux-9",
 			changedFiles:     []string{"el10/apps/cloudflared/app.yaml", "el9/apps/cloudflared/app.yaml"},
-			expect:           []string{"server-atlas"},
+			expect:           nil,
 		},
 
 		// An app used by a container that other containers are built on
@@ -157,7 +157,7 @@ func TestAnalyzeChanges(t *testing.T) {
 			changedFiles:     []string{".github/workflows/build-containers.yaml"},
 			expect: []string{
 				"base", "tailscale", "zfs", "monitoring", "monitoring-zfs", "k3s", "server",
-				"server-zfs", "server-atlas", "server-k3s", "server-worker",
+				"server-zfs", "server-k3s", "server-worker",
 			},
 		},
 
