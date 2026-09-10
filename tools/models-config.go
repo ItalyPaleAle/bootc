@@ -246,6 +246,41 @@ func LoadWorkDirs(root string) ([]*ConfigFile, error) {
 	return configs, nil
 }
 
+// PipelineContainers returns the image name of every container defined across the work dirs, each one after the container it's built on.
+// A container defined in more than one work dir appears once, so the workflow needs a single step for it.
+func PipelineContainers(configs []*ConfigFile) []string {
+	res := make([]string, 0, len(configs)*8)
+	added := make(map[string]bool, len(configs)*8)
+	// Containers currently being added, to guard against loops in the configuration
+	adding := make(map[string]bool, len(configs)*8)
+
+	var add func(config *ConfigFile, folder string)
+	add = func(config *ConfigFile, folder string) {
+		container := config.ContainerByFolder(folder)
+		if container == nil || added[container.ImageName] || adding[container.ImageName] {
+			return
+		}
+		adding[container.ImageName] = true
+
+		parent, ok := config.FolderByImageName(container.BaseImage)
+		if ok {
+			add(config, parent)
+		}
+
+		delete(adding, container.ImageName)
+		added[container.ImageName] = true
+		res = append(res, container.ImageName)
+	}
+
+	for _, config := range configs {
+		for _, folder := range config.Containers {
+			add(config, folder)
+		}
+	}
+
+	return res
+}
+
 func loadYamlFile(dest any, fileName string) error {
 	f, err := os.Open(fileName)
 	if err != nil {
