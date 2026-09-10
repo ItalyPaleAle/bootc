@@ -1,5 +1,8 @@
 imageName: 'server'
 baseImage: 'base' # ../base
+baseImages:
+  - 'alma-linux-10'
+  - 'alma-linux-rpi-10'
 apps:
   - 'alloy'
   - 'gotop'

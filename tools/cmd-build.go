@@ -30,6 +30,7 @@ func init() {
 				return err
 			}
 			flags.Containers = args
+			flags.Results = flags.Results[:0]
 
 			// Load the config file
 			config, err := LoadConfigFile(flags.WorkDir, "config.yaml", "config.override.yaml")
@@ -45,6 +46,13 @@ func init() {
 				}
 			}
 
+			if flags.ResultFile != "" {
+				err = writeBuildResults(flags.ResultFile, flags.Results)
+				if err != nil {
+					return fmt.Errorf("failed to write build results: %w", err)
+				}
+			}
+
 			return nil
 		},
 	}
@@ -55,7 +63,8 @@ func init() {
 	buildCmd.Flags().StringVarP(&flags.WorkDir, "work-dir", "w", ".", "Working directory, containing the config files, the apps, and containers")
 	buildCmd.Flags().StringVarP(&flags.DefaultBaseImage, "default-base-image", "b", "", "Name of the default base image to use, from the versions file")
 	buildCmd.Flags().StringSliceVarP(&flags.Tags, "tag", "t", []string{"latest"}, "Tag(s) for the image, for pushing ('latest' is added automatically)")
-	buildCmd.Flags().StringSliceVarP(&flags.Archs, "arch", "a", []string{"amd64"}, "Architecture(s) for building the image")
+	buildCmd.Flags().StringSliceVarP(&flags.Archs, "arch", "a", nil, "Architecture(s) for building the image; defaults to the container configuration")
+	buildCmd.Flags().StringVar(&flags.ResultFile, "result-file", "", "Write the JSON array of build results to this file")
 
 	rootCmd.AddCommand(buildCmd)
 }
@@ -68,14 +77,16 @@ type buildFlags struct {
 	Repository       string
 	Tags             []string
 	Archs            []string
+	ResultFile       string
 
 	Containers []string
+	Results    []buildResult
 }
 
 func (f *buildFlags) Validate() error {
 	// Validate required parameters
-	if len(f.Archs) == 0 {
-		return errors.New("at least one --arch flag must be specified")
+	if slices.Contains(f.Archs, "") {
+		return errors.New("flag --arch must not contain an empty value")
 	}
 	if f.DefaultBaseImage == "" {
 		return errors.New("flag --default-base-image must not be empty")
@@ -116,13 +127,15 @@ func (f buildFlags) buildImageName(imageName string) string {
 func ProcessContainer(flags *buildFlags, containerName string, config *ConfigFile) error {
 	var result buildResult
 
-	basePath := filepath.Join(config.Folders.ContainersDir, containerName)
-	fmt.Fprintf(os.Stderr, "Building container '%s': %s\n", containerName, basePath)
-
-	containerConfig, ok := config.containersMap[containerName]
+	folder, ok := config.FolderByImageName(containerName)
 	if !ok {
 		return fmt.Errorf("container not found in configuration: %s", containerName)
 	}
+
+	basePath := filepath.Join(config.Folders.ContainersDir, folder)
+	fmt.Fprintf(os.Stderr, "Building container '%s': %s\n", containerName, basePath)
+
+	containerConfig := config.ContainerByFolder(folder)
 
 	// Build the container
 	// Creates a manifest with a temporary tag
@@ -147,7 +160,7 @@ func ProcessContainer(flags *buildFlags, containerName string, config *ConfigFil
 	}
 	containerfile := Containerfile{
 		WorkDir:   flags.WorkDir,
-		Container: containerName,
+		Container: folder,
 		Apps:      apps,
 	}
 	stdin, err := containerfile.BuildContainerfile()
@@ -240,6 +253,7 @@ func ProcessContainer(flags *buildFlags, containerName string, config *ConfigFil
 
 	// Print the result
 	fmt.Println(result)
+	flags.Results = append(flags.Results, result)
 
 	return nil
 }
@@ -256,6 +270,27 @@ func (r buildResult) String() string {
 	return string(j)
 }
 
+func writeBuildResults(fileName string, results []buildResult) error {
+	err := os.MkdirAll(filepath.Dir(fileName), 0o755)
+	if err != nil {
+		return fmt.Errorf("failed to create the parent directory: %w", err)
+	}
+
+	f, err := os.Create(fileName)
+	if err != nil {
+		return fmt.Errorf("failed to create the file: %w", err)
+	}
+	defer f.Close()
+
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", "  ")
+	err = encoder.Encode(results)
+	if err != nil {
+		return fmt.Errorf("failed to encode results: %w", err)
+	}
+	return nil
+}
+
 func getBuildArgs(flags *buildFlags, containerConfig *ContainerConfig, config *ConfigFile, manifestNameTag string) ([]string, error) {
 	// Base image
 	baseImageName := containerConfig.BaseImage
@@ -265,19 +300,31 @@ func getBuildArgs(flags *buildFlags, containerConfig *ContainerConfig, config *C
 
 	// Get base image and add the digest
 	var baseImage string
-	if baseImageObj, ok := config.BaseImages[baseImageName]; ok {
+	baseImageObj, ok := config.BaseImages[baseImageName]
+	if ok {
 		// Base image is defined in the config
 		baseImage = baseImageObj.Image + "@" + baseImageObj.Digest
-	} else if baseContainer, ok := config.containersMap[baseImageName]; ok && baseContainer != nil {
-		// Container built from this configuration too
-		baseImage = flags.buildImageNameTag(baseContainer.ImageName, "latest")
 	} else {
-		return nil, fmt.Errorf("base image '%s' does not have a match in the list of base images or in other containers", baseImageName)
+		baseContainer, found := config.containersMap[baseImageName]
+		if found && baseContainer != nil {
+			// Container built from this configuration too
+			baseImage = flags.buildImageNameTag(baseContainer.ImageName, "latest")
+		} else {
+			return nil, fmt.Errorf("base image '%s' does not have a match in the list of base images or in other containers", baseImageName)
+		}
 	}
 
 	// List of platforms
-	platforms := make([]string, len(flags.Archs))
-	for i, a := range flags.Archs {
+	architectures := flags.Archs
+	if len(architectures) == 0 {
+		architectures = containerConfig.BuildArchitectures(config, flags.DefaultBaseImage)
+	}
+	if len(architectures) == 0 {
+		return nil, fmt.Errorf("container '%s' does not define any architecture for base image '%s'", containerConfig.ImageName, flags.DefaultBaseImage)
+	}
+
+	platforms := make([]string, len(architectures))
+	for i, a := range architectures {
 		platforms[i] = "linux/" + a
 	}
 

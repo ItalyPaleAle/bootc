@@ -194,6 +194,9 @@ To build images based on RHEL locally:
        image: registry.redhat.io/rhel10/rhel-bootc
        tag: latest
        digest: ''
+       architectures:
+         - amd64
+         - arm64
    ```
 
 3. Run the `update-versions` tool to fetch the latest digests:

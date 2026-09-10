@@ -1,4 +1,6 @@
 imageName: 'zfs'
 baseImage: 'base' # ../base
+architectures:
+  - amd64
 apps:
   - 'zfs'
