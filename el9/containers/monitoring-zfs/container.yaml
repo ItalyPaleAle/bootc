@@ -1,5 +1,7 @@
 imageName: 'monitoring-zfs'
 baseImage: 'base' # ../base
+architectures:
+  - amd64
 apps:
   - 'alloy'
   - 'zfs'

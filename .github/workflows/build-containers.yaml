@@ -2,7 +2,8 @@ name: "Build Containers"
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - "main"
   workflow_dispatch:
     inputs:
       rebuild-all:
@@ -184,9 +185,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      # Necessary for writing attestations
-      id-token: write
-      attestations: write
 
     strategy:
       fail-fast: false
@@ -205,7 +203,7 @@ jobs:
       # Ensure that IMAGE_NAME_BASE is all lowercase
       - name: Lowercase IMAGE_NAME_BASE
         run: |
-          echo "IMAGE_NAME_BASE=${IMAGE_NAME_BASE,,}" >>${GITHUB_ENV}
+          echo "IMAGE_NAME_BASE=${IMAGE_NAME_BASE,,}" >> "$GITHUB_ENV"
 
       # Add support for building for other platforms with QEMU
       # https://github.com/docker/setup-qemu-action
@@ -223,451 +221,117 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Setup environment
-      - name: Setup environment
-        run: |
-          # Create required folders
-          mkdir -p .bin .out
-
       # Compile the tools app
       - name: Compile tools app
         run: |
+          mkdir -p ../.bin
           go build \
             -v \
             -o ../.bin/tools
         working-directory: ./tools
 
-      # Build and push container image for base
-      # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
-      - name: "Build and push container image: base"
-        id: build-and-push-base
-        if: contains(fromJson(matrix.containers), 'base')
+      # Containers are built in dependency order, using the architectures in their configuration
+      - name: Build and push container images
+        env:
+          CONTAINERS_JSON: ${{ matrix.containers }}
         run: |
           set -euo pipefail
+
+          mkdir -p .out
+          mapfile -t CONTAINERS < <(jq -r '.[]' <<< "${CONTAINERS_JSON}")
+          if [ "${#CONTAINERS[@]}" -eq 0 ]; then
+            echo "The build plan does not contain any container" >&2
+            exit 1
+          fi
+
           .bin/tools \
             build \
-            base \
+            "${CONTAINERS[@]}" \
             --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch ${{ startsWith(matrix.baseImage, 'alma-linux-rpi') && 'arm64' || 'amd64,arm64' }} \
+            --work-dir "./${{ matrix.workDir }}" \
             --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
             --platform podman \
             --push \
             --tag "$(date +"%Y%m%d")" \
-              | tee .out/base.json
-          echo "ImageName=$(jq -r '.imageName' .out/base.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/base.json)" >> "$GITHUB_OUTPUT"
+            --result-file .out/build-results.json
 
-      # Build and push container image for tailscale
-      # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
-      - name: "Build and push container image: tailscale"
-        id: build-and-push-tailscale
-        if: contains(fromJson(matrix.containers), 'tailscale')
+      # Build results are collected into the dynamic attestation matrix after every base image finishes
+      - name: Upload build results
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: build-results-${{ matrix.baseImage }}
+          path: .out/build-results.json
+          if-no-files-found: error
+          retention-days: 1
+
+  prepare-attestations:
+
+    name: "Prepare attestations"
+
+    needs: build
+
+    if: needs.build.result == 'success'
+
+    runs-on: ubuntu-26.04
+
+    permissions:
+      actions: read
+
+    outputs:
+      matrix: ${{ steps.prepare.outputs.matrix }}
+
+    steps:
+      - name: Download build results
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: build-results-*
+          path: .out/build-results
+
+      - name: Prepare attestation matrix
+        id: prepare
         run: |
           set -euo pipefail
-          .bin/tools \
-            build \
-            tailscale \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch ${{ startsWith(matrix.baseImage, 'alma-linux-rpi') && 'arm64' || 'amd64,arm64' }} \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/tailscale.json
-          echo "ImageName=$(jq -r '.imageName' .out/tailscale.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/tailscale.json)" >> "$GITHUB_OUTPUT"
 
-      # Build and push container image for monitoring
-      # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
-      - name: "Build and push container image: k3s"
-        id: build-and-push-k3s
-        if: contains(fromJson(matrix.containers), 'k3s')
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            k3s \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch ${{ startsWith(matrix.baseImage, 'alma-linux-rpi') && 'arm64' || 'amd64,arm64' }} \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/k3s.json
-          echo "ImageName=$(jq -r '.imageName' .out/k3s.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/k3s.json)" >> "$GITHUB_OUTPUT"
+          shopt -s nullglob
+          FILES=(.out/build-results/*/build-results.json)
+          if [ "${#FILES[@]}" -eq 0 ]; then
+            echo "No build result was downloaded" >&2
+            exit 1
+          fi
 
-      # Build and push container image for monitoring
-      # For linux/amd64 and linux/arm64 (or arm64 only for RPi)
-      - name: "Build and push container image: monitoring"
-        id: build-and-push-monitoring
-        if: contains(fromJson(matrix.containers), 'monitoring')
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            monitoring \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch ${{ startsWith(matrix.baseImage, 'alma-linux-rpi') && 'arm64' || 'amd64,arm64' }} \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/monitoring.json
-          echo "ImageName=$(jq -r '.imageName' .out/monitoring.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/monitoring.json)" >> "$GITHUB_OUTPUT"
+          MATRIX=$(jq -sc 'add | map({imageName, digest}) | sort_by(.imageName)' "${FILES[@]}")
+          if ! jq -e 'all(.[]; (.imageName | length > 0) and (.digest | startswith("sha256:")))' <<< "${MATRIX}" >/dev/null; then
+            echo "A build result does not contain a valid image name and digest" >&2
+            exit 1
+          fi
 
-      # Build and push container image for zfs
-      # For linux/amd64
-      - name: "Build and push container image: zfs"
-        id: build-and-push-zfs
-        if: contains(fromJson(matrix.containers), 'zfs')
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            zfs \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch amd64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/zfs.json
-          echo "ImageName=$(jq -r '.imageName' .out/zfs.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/zfs.json)" >> "$GITHUB_OUTPUT"
+          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
 
-      # Build and push container image for monitoring-zfs
-      # For linux/amd64
-      - name: "Build and push container image: monitoring-zfs"
-        id: build-and-push-monitoring-zfs
-        if: contains(fromJson(matrix.containers), 'monitoring-zfs')
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            monitoring-zfs \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch amd64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/monitoring-zfs.json
-          echo "ImageName=$(jq -r '.imageName' .out/monitoring-zfs.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/monitoring-zfs.json)" >> "$GITHUB_OUTPUT"
+  attest:
 
-      # Build and push container image for server
-      # For linux/amd64 and linux/arm64 (or arm64 only for RPi) (Alma Linux only)
-      - name: "Build and push container image: server"
-        id: build-and-push-server
-        if: contains(fromJson(matrix.containers), 'server')
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            server \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch ${{ startsWith(matrix.baseImage, 'alma-linux-rpi') && 'arm64' || 'amd64,arm64' }} \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/server.json
-          echo "ImageName=$(jq -r '.imageName' .out/server.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/server.json)" >> "$GITHUB_OUTPUT"
+    name: "Attest ${{ matrix.imageName }}"
 
-      # Build and push container image for server-zfs
-      # For linux/amd64 (Alma Linux only)
-      - name: "Build and push container image: server-zfs"
-        id: build-and-push-server-zfs
-        if: contains(fromJson(matrix.containers), 'server-zfs')
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            server-zfs \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch amd64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/server-zfs.json
-          echo "ImageName=$(jq -r '.imageName' .out/server-zfs.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/server-zfs.json)" >> "$GITHUB_OUTPUT"
+    needs: prepare-attestations
 
-      # Build and push container image for server-worker
-      # For linux/amd64 and linux/arm64 (Alma Linux only)
-      - name: "Build and push container image: server-worker"
-        id: build-and-push-server-worker
-        if: contains(fromJson(matrix.containers), 'server-worker')
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            server-worker \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch amd64,arm64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/server-worker.json
-          echo "ImageName=$(jq -r '.imageName' .out/server-worker.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/server-worker.json)" >> "$GITHUB_OUTPUT"
+    if: needs.prepare-attestations.outputs.matrix != '[]'
 
-      # Build and push container image for server-k3s
-      # For linux/amd64 and linux/arm64 (Alma Linux only)
-      - name: "Build and push container image: server-k3s"
-        id: build-and-push-server-k3s
-        if: contains(fromJson(matrix.containers), 'server-k3s')
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            server-k3s \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch amd64,arm64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/server-k3s.json
-          echo "ImageName=$(jq -r '.imageName' .out/server-k3s.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/server-k3s.json)" >> "$GITHUB_OUTPUT"
+    runs-on: ubuntu-26.04
 
-      # Build and push container image for server-worker-zfs
-      # For linux/amd64 (Alma Linux 10 only)
-      - name: "Build and push container image: server-worker-zfs"
-        id: build-and-push-server-worker-zfs
-        if: contains(fromJson(matrix.containers), 'server-worker-zfs')
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            server-worker-zfs \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch amd64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/server-worker-zfs.json
-          echo "ImageName=$(jq -r '.imageName' .out/server-worker-zfs.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/server-worker-zfs.json)" >> "$GITHUB_OUTPUT"
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
 
-      # Build and push container image for server-k3s-zfs
-      # For linux/amd64 (Alma Linux 10 only)
-      - name: "Build and push container image: server-k3s-zfs"
-        id: build-and-push-server-k3s-zfs
-        if: contains(fromJson(matrix.containers), 'server-k3s-zfs')
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            server-k3s-zfs \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch amd64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/server-k3s-zfs.json
-          echo "ImageName=$(jq -r '.imageName' .out/server-k3s-zfs.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/server-k3s-zfs.json)" >> "$GITHUB_OUTPUT"
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.prepare-attestations.outputs.matrix) }}
 
-      # Build and push container image for server-mochi
-      # For linux/amd64 (Alma Linux 10 only)
-      - name: "Build and push container image: server-mochi"
-        id: build-and-push-server-mochi
-        if: contains(fromJson(matrix.containers), 'server-mochi')
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            server-mochi \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch amd64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/server-mochi.json
-          echo "ImageName=$(jq -r '.imageName' .out/server-mochi.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/server-mochi.json)" >> "$GITHUB_OUTPUT"
-
-      # Build and push container image for server-atlas
-      # For linux/amd64 (Alma Linux 10 only)
-      - name: "Build and push container image: server-atlas"
-        id: build-and-push-server-atlas
-        if: contains(fromJson(matrix.containers), 'server-atlas')
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            server-atlas \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch amd64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/server-atlas.json
-          echo "ImageName=$(jq -r '.imageName' .out/server-atlas.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/server-atlas.json)" >> "$GITHUB_OUTPUT"
-
-      # Build and push container image for server-boba
-      # For linux/amd64 (Alma Linux 10 only)
-      - name: "Build and push container image: server-boba"
-        id: build-and-push-server-boba
-        if: contains(fromJson(matrix.containers), 'server-boba')
-        run: |
-          set -euo pipefail
-          .bin/tools \
-            build \
-            server-boba \
-            --default-base-image "${{ matrix.baseImage }}" \
-            --work-dir ./${{ matrix.workDir }} \
-            --arch amd64 \
-            --repository "${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}/${{ matrix.baseImage }}/" \
-            --platform podman \
-            --push \
-            --tag "$(date +"%Y%m%d")" \
-              | tee .out/server-boba.json
-          echo "ImageName=$(jq -r '.imageName' .out/server-boba.json)" >> "$GITHUB_OUTPUT"
-          echo "Digest=$(jq -r '.digest' .out/server-boba.json)" >> "$GITHUB_OUTPUT"
-
-      - name: 'Container image attestation: tailscale'
-        if: steps.build-and-push-tailscale.outcome == 'success'
+    steps:
+      - name: Attest container image
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-name: ${{ steps.build-and-push-tailscale.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-tailscale.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: base'
-        if: steps.build-and-push-base.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-base.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-base.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: k3s'
-        if: steps.build-and-push-k3s.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-k3s.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-k3s.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: monitoring'
-        if: steps.build-and-push-monitoring.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-monitoring.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-monitoring.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: zfs'
-        if: steps.build-and-push-zfs.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-zfs.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-zfs.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: monitoring-zfs'
-        if: steps.build-and-push-monitoring-zfs.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-monitoring-zfs.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-monitoring-zfs.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: server'
-        if: steps.build-and-push-server.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-server.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-server.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: server-zfs'
-        if: steps.build-and-push-server-zfs.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-server-zfs.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-server-zfs.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: server-worker'
-        if: steps.build-and-push-server-worker.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-server-worker.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-server-worker.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: server-k3s'
-        if: steps.build-and-push-server-k3s.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-server-k3s.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-server-k3s.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: server-worker-zfs'
-        if: steps.build-and-push-server-worker-zfs.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-server-worker-zfs.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-server-worker-zfs.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: server-k3s-zfs'
-        if: steps.build-and-push-server-k3s-zfs.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-server-k3s-zfs.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-server-k3s-zfs.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: server-mochi'
-        if: steps.build-and-push-server-mochi.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-server-mochi.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-server-mochi.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: server-atlas'
-        if: steps.build-and-push-server-atlas.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-server-atlas.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-server-atlas.outputs.Digest }}
-          push-to-registry: true
-
-      - name: 'Container image attestation: server-boba'
-        if: steps.build-and-push-server-boba.outcome == 'success'
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-name: ${{ steps.build-and-push-server-boba.outputs.ImageName }}
-          subject-digest: ${{ steps.build-and-push-server-boba.outputs.Digest }}
+          subject-name: ${{ matrix.imageName }}
+          subject-digest: ${{ matrix.digest }}
           push-to-registry: true

@@ -1,5 +1,7 @@
 imageName: 'server-mochi'
 baseImage: 'server-worker-zfs' # ../server-worker-zfs
+architectures:
+  - amd64
 baseImages:
   - 'alma-linux-10'
 apps: []

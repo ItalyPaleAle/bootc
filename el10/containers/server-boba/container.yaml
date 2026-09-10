@@ -1,5 +1,7 @@
 imageName: 'server-boba'
 baseImage: 'server' # ../server
+architectures:
+  - amd64
 baseImages:
   - 'alma-linux-10'
 apps:

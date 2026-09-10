@@ -46,10 +46,67 @@ func TestContainerBaseImages(t *testing.T) {
 	// Every container in every config file is covered, so the workflow never has to guess a default
 	for _, config := range configs {
 		for _, folder := range config.Containers {
-			if _, ok := got[folder]; !ok {
-				t.Errorf("container '%s' from '%s' is missing", folder, config.WorkDir())
+			imageName := config.ContainerByFolder(folder).ImageName
+			_, ok := got[imageName]
+			if !ok {
+				t.Errorf("container '%s' from '%s' is missing", imageName, config.WorkDir())
 			}
 		}
+	}
+}
+
+func TestBuildArchitectures(t *testing.T) {
+	t.Chdir("..")
+
+	var config *ConfigFile
+	for _, candidate := range loadRepo(t) {
+		if candidate.WorkDir() == "el10" {
+			config = candidate
+			break
+		}
+	}
+	if config == nil {
+		t.Fatal("el10 config not found")
+	}
+
+	for _, tt := range []struct {
+		container string
+		baseImage string
+		want      []string
+	}{
+		{"base", "alma-linux-10", []string{"amd64", "arm64"}},
+		{"base", "alma-linux-rpi-10", []string{"arm64"}},
+		{"server", "alma-linux-rpi-10", []string{"arm64"}},
+		{"zfs", "alma-linux-10", []string{"amd64"}},
+	} {
+		got := config.ContainerByFolder(tt.container).BuildArchitectures(config, tt.baseImage)
+		if !slices.Equal(got, tt.want) {
+			t.Errorf("container '%s' on '%s': got %v, want %v", tt.container, tt.baseImage, got, tt.want)
+		}
+	}
+
+	parent := &ContainerConfig{
+		ImageName:     "parent",
+		BaseImage:     "default",
+		Architectures: []string{"amd64"},
+	}
+	child := &ContainerConfig{
+		ImageName: "child",
+		BaseImage: "parent",
+	}
+	chain := &ConfigFile{
+		BaseImages: map[string]Config_BaseImages{
+			"test-base": {Architectures: []string{"amd64", "arm64"}},
+		},
+		containersMap: map[string]*ContainerConfig{
+			"parent": parent,
+			"child":  child,
+		},
+	}
+	got := child.BuildArchitectures(chain, "test-base")
+	want := []string{"amd64"}
+	if !slices.Equal(got, want) {
+		t.Errorf("child inherited architectures %v, want %v", got, want)
 	}
 }
 
@@ -82,15 +139,17 @@ func TestUnknownPublishedBaseImageFails(t *testing.T) {
 	workDir := t.TempDir()
 	write := func(name string, content string) {
 		t.Helper()
-		if err := os.MkdirAll(filepath.Dir(filepath.Join(workDir, name)), 0o755); err != nil {
+		err := os.MkdirAll(filepath.Dir(filepath.Join(workDir, name)), 0o755)
+		if err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(workDir, name), []byte(content), 0o644); err != nil {
+		err = os.WriteFile(filepath.Join(workDir, name), []byte(content), 0o644)
+		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	write("config.yaml", "baseImages:\n  alma-linux-10:\n    image: example.com/bootc\n    tag: '10'\ncontainers:\n  - base\n")
+	write("config.yaml", "baseImages:\n  alma-linux-10:\n    image: example.com/bootc\n    tag: '10'\n    architectures:\n      - amd64\n      - arm64\ncontainers:\n  - base\n")
 	write("containers/base/Containerfile", "FROM $BASE_IMAGE\n")
 	write("containers/base/container.yaml", "imageName: 'base'\nbaseImage: 'default'\nbaseImages:\n  - 'alma-linux-11'\n")
 

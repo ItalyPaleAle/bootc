@@ -279,11 +279,13 @@ func (a *changeAnalyzer) classifyChanges(files []string) *changeSet {
 			changes.config = true
 		case hasFolderPrefix(rel, appsFolder):
 			// The name of the app is the name of its folder
-			if name, _ := splitFirstSegment(rel[len(appsFolder)+1:]); name != "" {
+			name, _ := splitFirstSegment(rel[len(appsFolder)+1:])
+			if name != "" {
 				changes.apps[name] = true
 			}
 		case hasFolderPrefix(rel, containersFolder):
-			if name, _ := splitFirstSegment(rel[len(containersFolder)+1:]); name != "" {
+			name, _ := splitFirstSegment(rel[len(containersFolder)+1:])
+			if name != "" {
 				changes.containers[name] = true
 			}
 		default:
@@ -321,7 +323,7 @@ func (a *changeAnalyzer) analyzeConfigChanges(changes *changeSet) error {
 	// Base images that were added or whose image, tag, or digest changed
 	for name, baseImage := range a.config.BaseImages {
 		prev, ok := previous.BaseImages[name]
-		if !ok || prev != baseImage {
+		if !ok || !prev.Equal(baseImage) {
 			changes.baseImages[name] = true
 		}
 	}
@@ -416,7 +418,8 @@ func (a *changeAnalyzer) result() *analyzeChangesResult {
 		}
 		adding[folder] = true
 
-		if parent, ok := a.parentOf(folder); ok {
+		parent, ok := a.parentOf(folder)
+		if ok {
 			add(parent)
 		}
 

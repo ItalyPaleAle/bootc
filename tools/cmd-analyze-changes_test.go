@@ -265,6 +265,9 @@ func TestAnalyzeChangesUsesImageNames(t *testing.T) {
     image: example.com/test
     tag: latest
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+    architectures:
+      - amd64
+      - arm64
 containers:
   - base-folder
   - child-folder
@@ -303,7 +306,8 @@ containers:
 	if !slices.Equal(baseImages["base"], []string{"test-base"}) {
 		t.Errorf("got base image mapping %v, want image names as keys", baseImages)
 	}
-	if _, ok := baseImages["base-folder"]; ok {
+	_, ok := baseImages["base-folder"]
+	if ok {
 		t.Errorf("got folder name in base image mapping: %v", baseImages)
 	}
 }

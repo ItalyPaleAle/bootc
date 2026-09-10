@@ -34,9 +34,18 @@ func (c ConfigFile) String() string {
 }
 
 type Config_BaseImages struct {
-	Image  string `yaml:"image,omitempty"`
-	Tag    string `yaml:"tag,omitempty"`
-	Digest string `yaml:"digest,omitempty"`
+	Image         string   `yaml:"image,omitempty"`
+	Tag           string   `yaml:"tag,omitempty"`
+	Digest        string   `yaml:"digest,omitempty"`
+	Architectures []string `yaml:"architectures,omitempty"`
+}
+
+// Equal reports whether two base image configurations are identical
+func (c Config_BaseImages) Equal(other Config_BaseImages) bool {
+	return c.Image == other.Image &&
+		c.Tag == other.Tag &&
+		c.Digest == other.Digest &&
+		slices.Equal(c.Architectures, other.Architectures)
 }
 
 type Config_Folders struct {
@@ -76,6 +85,15 @@ func LoadConfigFile(workDir string, configFileName string, overrideFileName stri
 		}
 	}
 
+	for name, baseImage := range config.BaseImages {
+		if len(baseImage.Architectures) == 0 {
+			return nil, fmt.Errorf("base image '%s' must define at least one architecture", name)
+		}
+		if slices.Contains(baseImage.Architectures, "") {
+			return nil, fmt.Errorf("base image '%s' contains an empty architecture", name)
+		}
+	}
+
 	// Clean and validate the folders
 	if config.Folders.Apps == "" {
 		return nil, errors.New("required property 'folders.apps' is empty")
@@ -104,14 +122,39 @@ func LoadConfigFile(workDir string, configFileName string, overrideFileName stri
 		if err != nil {
 			return nil, fmt.Errorf("failed to load container configuration for container '%s': %w", c, err)
 		}
-		for _, baseImage := range container.PublishedBaseImages(config) {
-			if _, ok := config.BaseImages[baseImage]; !ok {
-				return nil, fmt.Errorf("container '%s' is published for base image '%s', which is not defined in the config file", c, baseImage)
-			}
-		}
 		config.containersMap[container.ImageName] = container
 		config.containersByFolder[c] = container
 		config.folderByImageName[container.ImageName] = c
+	}
+
+	// Validate publication and architecture settings after every container is loaded, so they can refer to containers listed after them
+	for _, folder := range config.Containers {
+		container := config.ContainerByFolder(folder)
+		parentFolder, hasParent := config.FolderByImageName(container.BaseImage)
+		for _, baseImage := range container.PublishedBaseImages(config) {
+			_, ok := config.BaseImages[baseImage]
+			if !ok {
+				return nil, fmt.Errorf("container '%s' is published for base image '%s', which is not defined in the config file", folder, baseImage)
+			}
+
+			if hasParent {
+				parent := config.ContainerByFolder(parentFolder)
+				if !parent.PublishedFor(config, baseImage) {
+					return nil, fmt.Errorf("container '%s' is published for base image '%s', but container '%s' it's built on is not", folder, baseImage, parentFolder)
+				}
+			}
+
+			seen := map[*ContainerConfig]bool{container: true}
+			baseArchitectures := container.baseArchitectures(config, baseImage, seen)
+			if len(baseArchitectures) == 0 {
+				return nil, fmt.Errorf("container '%s' does not have a valid base architecture for base image '%s'", folder, baseImage)
+			}
+			for _, architecture := range container.BuildArchitectures(config, baseImage) {
+				if !slices.Contains(baseArchitectures, architecture) {
+					return nil, fmt.Errorf("container '%s' builds architecture '%s', which its base does not support for base image '%s'", folder, architecture, baseImage)
+				}
+			}
+		}
 	}
 
 	// Load the apps
