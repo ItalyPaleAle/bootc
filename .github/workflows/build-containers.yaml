@@ -37,12 +37,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The entire history is needed to diff against the commit built by the previous run
           fetch-depth: 0
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'tools/go.mod'
           cache-dependency-path: 'tools/go.sum'
@@ -191,9 +191,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'tools/go.mod'
           cache-dependency-path: 'tools/go.sum'
@@ -203,24 +203,17 @@ jobs:
         run: |
           echo "IMAGE_NAME_BASE=${IMAGE_NAME_BASE,,}" >>${GITHUB_ENV}
 
-      # Install the cosign tool
-      # https://github.com/sigstore/cosign-installer
-      - name: Install cosign
-        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
-        with:
-          cosign-release: 'v2.5.3'
-
       # Add support for building for other platforms with QEMU
       # https://github.com/docker/setup-qemu-action
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@49b3bc8e6bdd4a60e6116a5414239cba5943d3cf # v3.2.0
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
         with:
           platforms: "linux/amd64,linux/arm64"
 
       # Login against a container registry
       # https://github.com/docker/login-action
       - name: Log into registry ${{ env.REGISTRY }}
-        uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -557,7 +550,7 @@ jobs:
 
       - name: 'Container image attestation: tailscale'
         if: steps.build-and-push-tailscale.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-tailscale.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-tailscale.outputs.Digest }}
@@ -565,7 +558,7 @@ jobs:
 
       - name: 'Container image attestation: base'
         if: steps.build-and-push-base.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-base.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-base.outputs.Digest }}
@@ -573,7 +566,7 @@ jobs:
 
       - name: 'Container image attestation: k3s'
         if: steps.build-and-push-k3s.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-k3s.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-k3s.outputs.Digest }}
@@ -581,7 +574,7 @@ jobs:
 
       - name: 'Container image attestation: monitoring'
         if: steps.build-and-push-monitoring.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-monitoring.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-monitoring.outputs.Digest }}
@@ -589,7 +582,7 @@ jobs:
 
       - name: 'Container image attestation: zfs'
         if: steps.build-and-push-zfs.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-zfs.outputs.Digest }}
@@ -597,7 +590,7 @@ jobs:
 
       - name: 'Container image attestation: monitoring-zfs'
         if: steps.build-and-push-monitoring-zfs.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-monitoring-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-monitoring-zfs.outputs.Digest }}
@@ -605,7 +598,7 @@ jobs:
 
       - name: 'Container image attestation: server'
         if: steps.build-and-push-server.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-server.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server.outputs.Digest }}
@@ -613,7 +606,7 @@ jobs:
 
       - name: 'Container image attestation: server-zfs'
         if: steps.build-and-push-server-zfs.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-server-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-zfs.outputs.Digest }}
@@ -621,7 +614,7 @@ jobs:
 
       - name: 'Container image attestation: server-worker'
         if: steps.build-and-push-server-worker.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-server-worker.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-worker.outputs.Digest }}
@@ -629,7 +622,7 @@ jobs:
 
       - name: 'Container image attestation: server-k3s'
         if: steps.build-and-push-server-k3s.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-server-k3s.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-k3s.outputs.Digest }}
@@ -637,7 +630,7 @@ jobs:
 
       - name: 'Container image attestation: server-worker-zfs'
         if: steps.build-and-push-server-worker-zfs.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-server-worker-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-worker-zfs.outputs.Digest }}
@@ -645,7 +638,7 @@ jobs:
 
       - name: 'Container image attestation: server-k3s-zfs'
         if: steps.build-and-push-server-k3s-zfs.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-server-k3s-zfs.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-k3s-zfs.outputs.Digest }}
@@ -653,7 +646,7 @@ jobs:
 
       - name: 'Container image attestation: server-mochi'
         if: steps.build-and-push-server-mochi.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-server-mochi.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-mochi.outputs.Digest }}
@@ -661,7 +654,7 @@ jobs:
 
       - name: 'Container image attestation: server-atlas'
         if: steps.build-and-push-server-atlas.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-server-atlas.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-atlas.outputs.Digest }}
@@ -669,7 +662,7 @@ jobs:
 
       - name: 'Container image attestation: server-boba'
         if: steps.build-and-push-server-boba.outcome == 'success'
-        uses: actions/attest@v4
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-name: ${{ steps.build-and-push-server-boba.outputs.ImageName }}
           subject-digest: ${{ steps.build-and-push-server-boba.outputs.Digest }}
