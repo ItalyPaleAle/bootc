@@ -50,7 +50,8 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'tools/go.mod'
-          cache-dependency-path: 'tools/go.sum'
+          # Do not cache in release workflows
+          cache: false
 
       # Compile the tools app
       - name: Compile tools app
@@ -201,7 +202,8 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'tools/go.mod'
-          cache-dependency-path: 'tools/go.sum'
+          # Do not cache in release workflows
+          cache: false
 
       # Ensure that IMAGE_NAME_BASE is all lowercase
       - name: Lowercase IMAGE_NAME_BASE
@@ -214,6 +216,8 @@ jobs:
         uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
         with:
           platforms: "linux/amd64,linux/arm64"
+          # Do not cache in release workflows
+          cache-image: false
 
       # Login against a container registry
       # https://github.com/docker/login-action
