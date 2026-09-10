@@ -150,11 +150,7 @@ func (r analyzeChangesResult) PrintSummary(w io.Writer, flags *analyzeChangesFla
 }
 
 func analyzeChanges(flags *analyzeChangesFlags, config *ConfigFile) (*analyzeChangesResult, error) {
-	a, err := newChangeAnalyzer(flags, config)
-	if err != nil {
-		return nil, err
-	}
-	return a.Analyze()
+	return newChangeAnalyzer(flags, config).Analyze()
 }
 
 // changeAnalyzer determines which containers need to be rebuilt after a set of files changed
@@ -162,41 +158,21 @@ type changeAnalyzer struct {
 	flags  *analyzeChangesFlags
 	config *ConfigFile
 
-	// Folder names of all containers, in the order they are defined in the config file
-	folders []string
-	// Maps the folder name of each container to its configuration
-	byFolder map[string]*ContainerConfig
-	// Maps the image name of each container to its folder name
-	folderByImageName map[string]string
-
 	// Reasons why each container needs to be rebuilt, keyed by folder name
 	reasons map[string][]string
 }
 
-func newChangeAnalyzer(flags *analyzeChangesFlags, config *ConfigFile) (*changeAnalyzer, error) {
-	a := &changeAnalyzer{
-		flags:             flags,
-		config:            config,
-		folders:           make([]string, 0, len(config.Containers)),
-		byFolder:          make(map[string]*ContainerConfig, len(config.Containers)),
-		folderByImageName: make(map[string]string, len(config.Containers)),
-		reasons:           make(map[string][]string, len(config.Containers)),
+func newChangeAnalyzer(flags *analyzeChangesFlags, config *ConfigFile) *changeAnalyzer {
+	return &changeAnalyzer{
+		flags:   flags,
+		config:  config,
+		reasons: make(map[string][]string, len(config.Containers)),
 	}
+}
 
-	// The config file lists containers by folder name, while containersMap is keyed by image name
-	for _, container := range config.containersMap {
-		folder := filepath.Base(filepath.Dir(container.SavePath))
-		a.byFolder[folder] = container
-		a.folderByImageName[container.ImageName] = folder
-	}
-	for _, folder := range config.Containers {
-		if a.byFolder[folder] == nil {
-			return nil, fmt.Errorf("container '%s' from the config file was not loaded", folder)
-		}
-		a.folders = append(a.folders, folder)
-	}
-
-	return a, nil
+// parentOf returns the folder of the container the given container is built on, and whether it's built on a container at all
+func (a *changeAnalyzer) parentOf(folder string) (string, bool) {
+	return a.config.FolderByImageName(a.config.ContainerByFolder(folder).BaseImage)
 }
 
 func (a *changeAnalyzer) Analyze() (*analyzeChangesResult, error) {
@@ -225,8 +201,8 @@ func (a *changeAnalyzer) Analyze() (*analyzeChangesResult, error) {
 		}
 	}
 
-	for _, folder := range a.folders {
-		container := a.byFolder[folder]
+	for _, folder := range a.config.Containers {
+		container := a.config.ContainerByFolder(folder)
 
 		if changes.containers[folder] {
 			a.mark(folder, "the files of the container changed")
@@ -355,12 +331,12 @@ func (a *changeAnalyzer) analyzeConfigChanges(changes *changeSet) error {
 // rootBaseImage follows the chain of containers a container is built on, and returns the base image from the config file at the end of it
 func (a *changeAnalyzer) rootBaseImage(folder string) string {
 	// Guard against loops in the configuration
-	seen := make(map[string]bool, len(a.folders))
+	seen := make(map[string]bool, len(a.config.Containers))
 
 	for !seen[folder] {
 		seen[folder] = true
 
-		container := a.byFolder[folder]
+		container := a.config.ContainerByFolder(folder)
 		if container == nil {
 			return ""
 		}
@@ -370,7 +346,7 @@ func (a *changeAnalyzer) rootBaseImage(folder string) string {
 		}
 
 		// If the base image isn't another container, it's a base image from the config file
-		parent, ok := a.folderByImageName[container.BaseImage]
+		parent, ok := a.config.FolderByImageName(container.BaseImage)
 		if !ok {
 			return container.BaseImage
 		}
@@ -384,12 +360,12 @@ func (a *changeAnalyzer) rootBaseImage(folder string) string {
 func (a *changeAnalyzer) markDependents() {
 	for changed := true; changed; {
 		changed = false
-		for _, folder := range a.folders {
+		for _, folder := range a.config.Containers {
 			if len(a.reasons[folder]) > 0 {
 				continue
 			}
 
-			parent, ok := a.folderByImageName[a.byFolder[folder].BaseImage]
+			parent, ok := a.parentOf(folder)
 			if ok && len(a.reasons[parent]) > 0 {
 				a.mark(folder, fmt.Sprintf("container '%s' it's based on is being rebuilt", parent))
 				changed = true
@@ -405,7 +381,7 @@ func (a *changeAnalyzer) mark(folder string, reason string) {
 }
 
 func (a *changeAnalyzer) rebuildAll(reason string) *analyzeChangesResult {
-	for _, folder := range a.folders {
+	for _, folder := range a.config.Containers {
 		a.mark(folder, reason)
 	}
 
@@ -416,13 +392,13 @@ func (a *changeAnalyzer) rebuildAll(reason string) *analyzeChangesResult {
 
 func (a *changeAnalyzer) result() *analyzeChangesResult {
 	res := &analyzeChangesResult{
-		Containers: make([]string, 0, len(a.folders)),
-		Reasons:    make(map[string][]string, len(a.folders)),
+		Containers: make([]string, 0, len(a.config.Containers)),
+		Reasons:    make(map[string][]string, len(a.config.Containers)),
 	}
 
-	added := make(map[string]bool, len(a.folders))
+	added := make(map[string]bool, len(a.config.Containers))
 	// Containers currently being added, to guard against loops in the configuration
-	adding := make(map[string]bool, len(a.folders))
+	adding := make(map[string]bool, len(a.config.Containers))
 
 	// Containers are listed after the ones they are based on, so they can be built in this order
 	var add func(folder string)
@@ -432,7 +408,7 @@ func (a *changeAnalyzer) result() *analyzeChangesResult {
 		}
 		adding[folder] = true
 
-		if parent, ok := a.folderByImageName[a.byFolder[folder].BaseImage]; ok {
+		if parent, ok := a.parentOf(folder); ok {
 			add(parent)
 		}
 
@@ -442,8 +418,8 @@ func (a *changeAnalyzer) result() *analyzeChangesResult {
 		res.Reasons[folder] = a.reasons[folder]
 	}
 
-	// Iterate on a.folders, and not on the reasons map, so the order is stable
-	for _, folder := range a.folders {
+	// Iterate on the config file, and not on the reasons map, so the order is stable
+	for _, folder := range a.config.Containers {
 		add(folder)
 	}
 

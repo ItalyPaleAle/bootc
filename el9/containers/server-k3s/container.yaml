@@ -1,5 +1,7 @@
 # K3s worker server: runs apps, and consumes storage from the network (via iSCSI and/or NFS)
 imageName: 'server-k3s'
 baseImage: 'server-worker' # ../server-worker
+baseImages:
+  - 'alma-linux-9'
 apps:
   - 'k3s'

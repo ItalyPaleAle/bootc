@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 type ContainerConfig struct {
@@ -15,7 +16,25 @@ type ContainerConfig struct {
 	BaseImage     string   `yaml:"baseImage"`
 	Apps          []string `yaml:"apps"`
 
+	// Base images from the config file this container is published for.
+	// Leave the property unset to publish it for every base image in the config file, and set it to an empty list to not publish it at all.
+	BaseImages *[]string `yaml:"baseImages,omitempty"`
+
 	SavePath string `yaml:"-"`
+}
+
+// PublishedBaseImages returns the base images this container is published for, sorted.
+// A container that doesn't restrict them is published for every base image in the config file.
+func (c *ContainerConfig) PublishedBaseImages(config *ConfigFile) []string {
+	if c.BaseImages == nil {
+		return config.BaseImageNames()
+	}
+	return slices.Sorted(slices.Values(*c.BaseImages))
+}
+
+// PublishedFor reports whether this container is published for the given base image
+func (c *ContainerConfig) PublishedFor(config *ConfigFile, baseImage string) bool {
+	return slices.Contains(c.PublishedBaseImages(config), baseImage)
 }
 
 func LoadContainerConfig(fileName string, overrideFileName string) (*ContainerConfig, error) {

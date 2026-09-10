@@ -1,4 +1,6 @@
 imageName: 'server-atlas'
 baseImage: 'server-zfs' # ../server-zfs
+# Not published: the workflow has never built this image for EL9
+baseImages: []
 apps:
   - 'cloudflared'

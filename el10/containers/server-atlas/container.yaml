@@ -1,4 +1,6 @@
 imageName: 'server-atlas'
 baseImage: 'server-zfs' # ../server-zfs
+baseImages:
+  - 'alma-linux-10'
 apps:
   - 'cloudflared'

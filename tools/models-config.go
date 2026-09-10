@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"gopkg.in/yaml.v3"
 )
@@ -16,9 +18,14 @@ type ConfigFile struct {
 	Containers []string                     `yaml:"containers,omitempty"`
 	Apps       []string                     `yaml:"apps,omitempty"`
 
-	SavePath      string `yaml:"-"`
+	SavePath string `yaml:"-"`
+	// Containers keyed by image name
 	containersMap map[string]*ContainerConfig
-	appsMap       map[string]*App
+	// Containers keyed by the name of the folder the config file lists them under
+	containersByFolder map[string]*ContainerConfig
+	// Maps the image name of each container to the name of its folder
+	folderByImageName map[string]string
+	appsMap           map[string]*App
 }
 
 func (c ConfigFile) String() string {
@@ -87,6 +94,8 @@ func LoadConfigFile(workDir string, configFileName string, overrideFileName stri
 
 	// Load the containers
 	config.containersMap = make(map[string]*ContainerConfig, len(config.Containers))
+	config.containersByFolder = make(map[string]*ContainerConfig, len(config.Containers))
+	config.folderByImageName = make(map[string]string, len(config.Containers))
 	for _, c := range config.Containers {
 		container, err := LoadContainerConfig(
 			filepath.Join(config.Folders.ContainersDir, c, "container.yaml"),
@@ -95,7 +104,14 @@ func LoadConfigFile(workDir string, configFileName string, overrideFileName stri
 		if err != nil {
 			return nil, fmt.Errorf("failed to load container configuration for container '%s': %w", c, err)
 		}
+		for _, baseImage := range container.PublishedBaseImages(config) {
+			if _, ok := config.BaseImages[baseImage]; !ok {
+				return nil, fmt.Errorf("container '%s' is published for base image '%s', which is not defined in the config file", c, baseImage)
+			}
+		}
 		config.containersMap[container.ImageName] = container
+		config.containersByFolder[c] = container
+		config.folderByImageName[container.ImageName] = c
 	}
 
 	// Load the apps
@@ -130,6 +146,60 @@ func LoadConfigSnapshot(configFile string) (*ConfigFile, error) {
 	}
 
 	return config, nil
+}
+
+// ContainerByFolder returns the container the config file lists under the given folder name
+func (c ConfigFile) ContainerByFolder(folder string) *ContainerConfig {
+	return c.containersByFolder[folder]
+}
+
+// FolderByImageName returns the folder of the container that builds the given image name, and whether such a container exists
+func (c ConfigFile) FolderByImageName(imageName string) (string, bool) {
+	folder, ok := c.folderByImageName[imageName]
+	return folder, ok
+}
+
+// WorkDir returns the path of the folder the config file is in, which is the work dir it configures
+func (c ConfigFile) WorkDir() string {
+	return filepath.ToSlash(filepath.Dir(c.SavePath))
+}
+
+// BaseImageNames returns the names of the base images defined in the config file, sorted
+func (c ConfigFile) BaseImageNames() []string {
+	return slices.Sorted(maps.Keys(c.BaseImages))
+}
+
+// LoadWorkDirs loads the config file of every work dir under root, sorted by work dir.
+// Work dirs are the subfolders that hold a config.yaml, so adding one to the repository is enough for the workflow to start building it.
+func LoadWorkDirs(root string) ([]*ConfigFile, error) {
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory '%s': %w", root, err)
+	}
+
+	configs := make([]*ConfigFile, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		workDir := filepath.Join(root, entry.Name())
+		if _, err := os.Stat(filepath.Join(workDir, "config.yaml")); err != nil {
+			continue
+		}
+
+		config, err := LoadConfigFile(workDir, "config.yaml", "config.override.yaml")
+		if err != nil {
+			return nil, fmt.Errorf("failed to load config file in '%s': %w", workDir, err)
+		}
+		configs = append(configs, config)
+	}
+
+	if len(configs) == 0 {
+		return nil, fmt.Errorf("no work dir containing a config.yaml was found in '%s'", root)
+	}
+
+	return configs, nil
 }
 
 func loadYamlFile(dest any, fileName string) error {

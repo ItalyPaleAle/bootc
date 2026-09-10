@@ -1,4 +1,6 @@
 imageName: 'server-boba'
 baseImage: 'server' # ../server
+baseImages:
+  - 'alma-linux-10'
 apps:
   - 'cloudflared'

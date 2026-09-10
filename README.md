@@ -188,9 +188,17 @@ The [Build Containers](./.github/workflows/build-containers.yaml) workflow only 
 
 Changes to the [tools](./tools/) or to the workflow itself rebuild every image, and so does running the workflow manually with the "Rebuild every container image" option.
 
-The `analyze-changes` command implements this, and can be run locally to see what a set of changes would rebuild:
+The workflow reads everything it needs from the config files, so adding a base image, a container, or a work dir needs no change to it:
+
+- `build-matrix` lists the work dir and base image of every job to run, from the `baseImages` in each `config.yaml`.
+- `container-base-images` maps each container to the base images it's published for. A container is published for every base image in its `config.yaml`, unless its `container.yaml` sets `baseImages` to a subset (`server-zfs`, for example, is only published for Alma Linux).
+- `analyze-changes` lists the containers a set of changes impacts.
+
+All three print JSON, and can be run locally:
 
 ```sh
+.bin/tools build-matrix
+.bin/tools container-base-images
 .bin/tools analyze-changes \
    --work-dir ./el10 \
    --default-base-image "alma-linux-10" \

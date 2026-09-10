@@ -1,5 +1,8 @@
 imageName: 'monitoring-zfs'
 baseImage: 'base' # ../base
+baseImages:
+  - 'alma-linux-10'
+  - 'centos-stream-10'
 apps:
   - 'alloy'
   - 'zfs'

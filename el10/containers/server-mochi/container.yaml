@@ -1,3 +1,5 @@
 imageName: 'server-mochi'
 baseImage: 'server-worker-zfs' # ../server-worker-zfs
+baseImages:
+  - 'alma-linux-10'
 apps: []
