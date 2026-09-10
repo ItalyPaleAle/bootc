@@ -79,20 +79,20 @@ func TestAnalyzeChanges(t *testing.T) {
 			expect:           nil,
 		},
 
-		// PR #280: the cloudflared app changed in both el9 and el10, so every container that uses it must be rebuilt
+		// PR #280: the cloudflared app changed, so every container that uses it must be rebuilt
 		{
-			name:             "app changed: cloudflared in el10",
+			name:             "app changed: cloudflared",
 			workDir:          el10WorkDir,
 			defaultBaseImage: "alma-linux-10",
-			changedFiles:     []string{"el10/apps/cloudflared/app.yaml", "el9/apps/cloudflared/app.yaml"},
+			changedFiles:     []string{"el10/apps/cloudflared/app.yaml"},
 			expect:           []string{"server-atlas", "server-boba"},
 		},
 		{
-			name:             "app changed: cloudflared in el9",
+			name:             "app changed: cloudflared, which el9 doesn't include",
 			workDir:          el9WorkDir,
 			defaultBaseImage: "alma-linux-9",
-			changedFiles:     []string{"el10/apps/cloudflared/app.yaml", "el9/apps/cloudflared/app.yaml"},
-			expect:           []string{"server-atlas"},
+			changedFiles:     []string{"el10/apps/cloudflared/app.yaml"},
+			expect:           nil,
 		},
 
 		// An app used by a container that other containers are built on
@@ -150,7 +150,7 @@ func TestAnalyzeChanges(t *testing.T) {
 			workDir:          el9WorkDir,
 			defaultBaseImage: "alma-linux-9",
 			changedFiles:     []string{".github/workflows/build-containers.yaml"},
-			expect:           []string{"base", "tailscale", "zfs", "monitoring", "monitoring-zfs", "k3s", "server", "server-zfs", "server-atlas", "server-k3s", "server-worker"},
+			expect:           []string{"base", "tailscale", "zfs", "monitoring", "monitoring-zfs", "k3s", "server", "server-zfs", "server-k3s", "server-worker"},
 		},
 
 		// Changes that don't impact any container
