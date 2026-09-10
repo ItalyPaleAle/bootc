@@ -23,7 +23,6 @@ containers:
   - server-worker
 apps:
   - alloy
-  - cloudflared
   - gotop
   - k3s
   - restic
