@@ -62,6 +62,15 @@ jobs:
             -o ../.bin/tools
         working-directory: ./tools
 
+      # The build jobs run the same binary rather than compiling it again
+      - name: Upload the tools app
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: tools
+          path: .bin/tools
+          if-no-files-found: error
+          retention-days: 1
+
       # Find the commit built by the previous successful run of this workflow, which is the baseline the current commit is compared with.
       # Using the previous successful run, rather than the previous commit, means changes that were part of a failed run are analyzed again.
       - name: Find the previously-built commit
@@ -199,12 +208,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: 'tools/go.mod'
-          # Do not cache in release workflows
-          cache: false
-
       # Ensure that IMAGE_NAME_BASE is all lowercase
       - name: Lowercase IMAGE_NAME_BASE
         run: |
@@ -228,14 +231,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Compile the tools app
-      - name: Compile tools app
-        run: |
-          mkdir -p ../.bin
-          go build \
-            -v \
-            -o ../.bin/tools
-        working-directory: ./tools
+      # Downloading an artifact drops the executable bit, so the app is made executable again
+      - name: Download the tools app
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: tools
+          path: .bin
+
+      - name: Make the tools app executable
+        run: chmod +x .bin/tools
 
       # Containers are built in the order below, so each one is built after the image it's based on.
       # A container is skipped when the analysis says nothing it depends on changed.
