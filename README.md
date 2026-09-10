@@ -177,34 +177,6 @@ To build images locally, you will need these tools installed:
       --tag "$(date +"%Y%m%d")"
    ```
 
-### Automated builds
-
-The [Build Containers](./.github/workflows/build-containers.yaml) workflow only rebuilds the images that a change impacts, comparing the current commit with the one built by the previous successful run of the workflow. An image is rebuilt when:
-
-- The base image it's built on changed in the config file, and it's the base image being built (for example, a new digest for `alma-linux-10` doesn't rebuild the CentOS Stream images).
-- One of the apps it includes changed.
-- One of the files in its folder changed.
-- The image it's built on top of is being rebuilt.
-
-Changes to the [tools](./tools/) or to the workflow itself rebuild every image, and so does running the workflow manually with the "Rebuild every container image" option.
-
-The workflow reads everything it needs from the config files, so adding a base image, a container, or a work dir needs no change to it:
-
-- `build-matrix` lists the work dir and base image of every job to run, from the `baseImages` in each `config.yaml`.
-- `container-base-images` maps each container to the base images it's published for. A container is published for every base image in its `config.yaml`, unless its `container.yaml` sets `baseImages` to a subset (`server-zfs`, for example, is only published for Alma Linux).
-- `analyze-changes` lists the containers a set of changes impacts.
-
-All three print JSON, and can be run locally:
-
-```sh
-.bin/tools build-matrix
-.bin/tools container-base-images
-.bin/tools analyze-changes \
-   --work-dir ./el10 \
-   --default-base-image "alma-linux-10" \
-   --changed-files el10/apps/tailscale/app.yaml
-```
-
 ## Use with RHEL
 
 The Containerfiles are compatible with RHEL too, currently supporting RHEL 10 and 9. Due to licensing reasons, the RHEL-based images are not published from this repo automatically.

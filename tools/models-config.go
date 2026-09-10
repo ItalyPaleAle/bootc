@@ -184,7 +184,8 @@ func LoadWorkDirs(root string) ([]*ConfigFile, error) {
 		}
 
 		workDir := filepath.Join(root, entry.Name())
-		if _, err := os.Stat(filepath.Join(workDir, "config.yaml")); err != nil {
+		_, err := os.Stat(filepath.Join(workDir, "config.yaml"))
+		if err != nil {
 			continue
 		}
 

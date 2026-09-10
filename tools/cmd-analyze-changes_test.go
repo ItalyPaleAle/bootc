@@ -101,10 +101,7 @@ func TestAnalyzeChanges(t *testing.T) {
 			workDir:          el10WorkDir,
 			defaultBaseImage: "alma-linux-10",
 			changedFiles:     []string{"el10/apps/zfs/Containerfile-builder"},
-			expect: []string{
-				"zfs", "monitoring-zfs", "server-zfs", "server-k3s-zfs", "server-worker-zfs",
-				"server-atlas", "server-mochi",
-			},
+			expect:           []string{"zfs", "monitoring-zfs", "server-zfs", "server-k3s-zfs", "server-worker-zfs", "server-atlas", "server-mochi"},
 		},
 
 		// Changes to the files of a container also rebuild all the containers built on top of it
@@ -120,9 +117,7 @@ func TestAnalyzeChanges(t *testing.T) {
 			workDir:          el10WorkDir,
 			defaultBaseImage: "alma-linux-10",
 			changedFiles:     []string{"el10/containers/server-zfs/container.yaml"},
-			expect: []string{
-				"server-zfs", "server-k3s-zfs", "server-worker-zfs", "server-atlas", "server-mochi",
-			},
+			expect:           []string{"server-zfs", "server-k3s-zfs", "server-worker-zfs", "server-atlas", "server-mochi"},
 		},
 		{
 			name:             "container changed: extra file in the build context",
@@ -155,10 +150,7 @@ func TestAnalyzeChanges(t *testing.T) {
 			workDir:          el9WorkDir,
 			defaultBaseImage: "alma-linux-9",
 			changedFiles:     []string{".github/workflows/build-containers.yaml"},
-			expect: []string{
-				"base", "tailscale", "zfs", "monitoring", "monitoring-zfs", "k3s", "server",
-				"server-zfs", "server-atlas", "server-k3s", "server-worker",
-			},
+			expect:           []string{"base", "tailscale", "zfs", "monitoring", "monitoring-zfs", "k3s", "server", "server-zfs", "server-atlas", "server-k3s", "server-worker"},
 		},
 
 		// Changes that don't impact any container

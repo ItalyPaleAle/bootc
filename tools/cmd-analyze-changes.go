@@ -29,23 +29,28 @@ func init() {
 		Use:   "analyze-changes",
 		Short: "Analyze changed files and determine which containers need rebuilding",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// Validate flags
 			err := flags.Validate()
 			if err != nil {
 				return err
 			}
 
+			// Load the config file
 			config, err := LoadConfigFile(flags.WorkDir, "config.yaml", "config.override.yaml")
 			if err != nil {
 				return fmt.Errorf("failed to load config file: %w", err)
 			}
 
+			// Analyze changes
 			result, err := analyzeChanges(flags, config)
 			if err != nil {
 				return fmt.Errorf("failed to analyze changes: %w", err)
 			}
 
-			// The summary goes to stderr so stdout stays parseable by the workflow
+			// Summary goes to stderr so stdout stays parseable by the workflow
 			result.PrintSummary(os.Stderr, flags)
+
+			// Print result as JSON
 			fmt.Println(result)
 
 			return nil
@@ -103,9 +108,10 @@ func (f *analyzeChangesFlags) ReadChangedFiles() ([]string, error) {
 		}
 
 		// Entries are separated by newlines, or by NUL characters when the list comes from "git diff -z"
-		for _, line := range strings.FieldsFunc(string(read), func(r rune) bool {
+		fn := strings.FieldsFunc(string(read), func(r rune) bool {
 			return r == '\n' || r == '\r' || r == 0
-		}) {
+		})
+		for _, line := range fn {
 			files = append(files, line)
 		}
 	}
@@ -214,7 +220,8 @@ func (a *changeAnalyzer) Analyze() (*analyzeChangesResult, error) {
 			}
 		}
 
-		if baseImage := a.rootBaseImage(folder); changes.baseImages[baseImage] {
+		baseImage := a.rootBaseImage(folder)
+		if changes.baseImages[baseImage] {
 			a.mark(folder, fmt.Sprintf("base image '%s' changed", baseImage))
 		}
 	}
@@ -313,7 +320,8 @@ func (a *changeAnalyzer) analyzeConfigChanges(changes *changeSet) error {
 
 	// Base images that were added or whose image, tag, or digest changed
 	for name, baseImage := range a.config.BaseImages {
-		if prev, ok := previous.BaseImages[name]; !ok || prev != baseImage {
+		prev, ok := previous.BaseImages[name]
+		if !ok || prev != baseImage {
 			changes.baseImages[name] = true
 		}
 	}
