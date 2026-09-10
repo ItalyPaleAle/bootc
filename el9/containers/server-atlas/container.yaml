@@ -1,6 +1,6 @@
 imageName: 'server-atlas'
 baseImage: 'server-zfs' # ../server-zfs
-# Not published: the workflow has never built this image for EL9
+# server-atlas is only published for Alma Linux 10, so this work dir builds it for nothing
 baseImages: []
 apps:
   - 'cloudflared'
