@@ -17,10 +17,20 @@ const (
 func TestAnalyzeChanges(t *testing.T) {
 	t.Chdir("..")
 
-	// el10/config.yaml before the digests of alma-linux-10 and alma-linux-rpi-10 were updated, which is the change in PR #284
+	currentEl10, err := LoadConfigSnapshot(filepath.Join(el10WorkDir, "config.yaml"))
+	if err != nil {
+		t.Fatalf("failed to load el10/config.yaml: %v", err)
+	}
+	almaLinuxDigest := currentEl10.BaseImages["alma-linux-10"].Digest
+	almaLinuxRPIDigest := currentEl10.BaseImages["alma-linux-rpi-10"].Digest
+	if almaLinuxDigest == "" || almaLinuxRPIDigest == "" {
+		t.Fatal("expected the Alma Linux base images to have digests")
+	}
+
+	// el10/config.yaml before the digests of alma-linux-10 and alma-linux-rpi-10 were updated
 	el10PreviousDigests := writeFile(t, replaceInFile(t, filepath.Join(el10WorkDir, "config.yaml"),
-		"sha256:7e5beb82eeec8f233471d48f3eba148c5c1eb37590383d64034f26b502ca7d5a", "sha256:0000000000000000000000000000000000000000000000000000000000000001",
-		"sha256:98de1bccf5d9628552edaedc03145d35bb9bcb0265d9d5a4a6bc0b0c7f9dbf4a", "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+		almaLinuxDigest, "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+		almaLinuxRPIDigest, "sha256:0000000000000000000000000000000000000000000000000000000000000002",
 	))
 
 	// el10/config.yaml before server-mochi was added to the list of containers
@@ -247,6 +257,57 @@ func TestAnalyzeChanges(t *testing.T) {
 	}
 }
 
+func TestAnalyzeChangesUsesImageNames(t *testing.T) {
+	root := t.TempDir()
+	workDir := filepath.Join(root, "el")
+	writeTestFile(t, filepath.Join(workDir, "config.yaml"), `baseImages:
+  test-base:
+    image: example.com/test
+    tag: latest
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+containers:
+  - base-folder
+  - child-folder
+`)
+	writeTestFile(t, filepath.Join(workDir, "containers/base-folder/Containerfile"), "FROM $BASE_IMAGE\n")
+	writeTestFile(t, filepath.Join(workDir, "containers/base-folder/container.yaml"), "imageName: base\nbaseImage: default\n")
+	writeTestFile(t, filepath.Join(workDir, "containers/child-folder/Containerfile"), "FROM $BASE_IMAGE\n")
+	writeTestFile(t, filepath.Join(workDir, "containers/child-folder/container.yaml"), "imageName: child\nbaseImage: base\n")
+
+	t.Chdir(root)
+	config, err := LoadConfigFile("el", "config.yaml", "")
+	if err != nil {
+		t.Fatalf("failed to load config file: %v", err)
+	}
+
+	result, err := analyzeChanges(&analyzeChangesFlags{
+		WorkDir:          "el",
+		DefaultBaseImage: "test-base",
+		ChangedFiles:     []string{"el/containers/base-folder/Containerfile"},
+	}, config)
+	if err != nil {
+		t.Fatalf("failed to analyze changes: %v", err)
+	}
+
+	want := []string{"base", "child"}
+	if !slices.Equal(result.Containers, want) {
+		t.Errorf("got containers %v, want %v", result.Containers, want)
+	}
+	for _, imageName := range want {
+		if len(result.Reasons[imageName]) == 0 {
+			t.Errorf("container image '%s' is rebuilt without a reason", imageName)
+		}
+	}
+
+	baseImages := ContainerBaseImages([]*ConfigFile{config})
+	if !slices.Equal(baseImages["base"], []string{"test-base"}) {
+		t.Errorf("got base image mapping %v, want image names as keys", baseImages)
+	}
+	if _, ok := baseImages["base-folder"]; ok {
+		t.Errorf("got folder name in base image mapping: %v", baseImages)
+	}
+}
+
 func TestAnalyzeChangesReadChangedFilesFile(t *testing.T) {
 	// "git diff -z" separates the file names with NUL characters
 	path := writeFile(t, "el10/config.yaml\x00el10/apps/zfs/Containerfile\x00")
@@ -271,15 +332,29 @@ func TestAnalyzeChangesReadChangedFilesFile(t *testing.T) {
 func assertBuildOrder(t *testing.T, config *ConfigFile, containers []string) {
 	t.Helper()
 
-	for i, folder := range containers {
-		baseImage := config.containersMap[folder].BaseImage
+	for i, imageName := range containers {
+		baseImage := config.containersMap[imageName].BaseImage
 		if !slices.Contains(containers, baseImage) {
 			// Not built on top of another container that is being rebuilt
 			continue
 		}
 		if !slices.Contains(containers[:i], baseImage) {
-			t.Errorf("container '%s' is listed before '%s', which it is based on", folder, baseImage)
+			t.Errorf("container '%s' is listed before '%s', which it is based on", imageName, baseImage)
 		}
+	}
+}
+
+func writeTestFile(t *testing.T, fileName string, content string) {
+	t.Helper()
+
+	err := os.MkdirAll(filepath.Dir(fileName), 0o755)
+	if err != nil {
+		t.Fatalf("failed to create parent directory of '%s': %v", fileName, err)
+	}
+
+	err = os.WriteFile(fileName, []byte(content), 0o644)
+	if err != nil {
+		t.Fatalf("failed to write file '%s': %v", fileName, err)
 	}
 }
 

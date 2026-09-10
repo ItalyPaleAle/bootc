@@ -131,7 +131,7 @@ func (f *analyzeChangesFlags) ReadChangedFiles() ([]string, error) {
 type analyzeChangesResult struct {
 	// True if all containers are rebuilt because of a change that could impact any of them
 	RebuildAll bool `json:"rebuildAll"`
-	// Folder names of the containers to rebuild, each one after the container it's built on
+	// Image names of the containers to rebuild, each one after the container it's built on
 	Containers []string `json:"containers"`
 	// Maps each container in Containers to the reasons why it's being rebuilt
 	Reasons map[string][]string `json:"reasons,omitempty"`
@@ -422,8 +422,9 @@ func (a *changeAnalyzer) result() *analyzeChangesResult {
 
 		delete(adding, folder)
 		added[folder] = true
-		res.Containers = append(res.Containers, folder)
-		res.Reasons[folder] = a.reasons[folder]
+		imageName := a.config.ContainerByFolder(folder).ImageName
+		res.Containers = append(res.Containers, imageName)
+		res.Reasons[imageName] = a.reasons[folder]
 	}
 
 	// Iterate on the config file, and not on the reasons map, so the order is stable

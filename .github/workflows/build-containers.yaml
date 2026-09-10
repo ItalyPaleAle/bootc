@@ -10,6 +10,10 @@ on:
         type: boolean
         default: true
 
+concurrency:
+  group: build-containers-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   # Docker registry
   REGISTRY: ghcr.io

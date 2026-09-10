@@ -58,19 +58,20 @@ func BuildMatrix(configs []*ConfigFile) []buildMatrixEntry {
 	return matrix
 }
 
-// ContainerBaseImages maps each container to the base images it's published for, sorted.
+// ContainerBaseImages maps each container image name to the base images it's published for, sorted.
 // Base image names are unique across work dirs, so a container defined in more than one work dir, such as base, gets the base images of all of them.
 func ContainerBaseImages(configs []*ConfigFile) map[string][]string {
 	baseImages := map[string][]string{}
 	for _, config := range configs {
 		for _, folder := range config.Containers {
-			baseImages[folder] = append(baseImages[folder], config.ContainerByFolder(folder).PublishedBaseImages(config)...)
+			container := config.ContainerByFolder(folder)
+			baseImages[container.ImageName] = append(baseImages[container.ImageName], container.PublishedBaseImages(config)...)
 		}
 	}
 
-	for folder, names := range baseImages {
+	for imageName, names := range baseImages {
 		slices.Sort(names)
-		baseImages[folder] = slices.Compact(names)
+		baseImages[imageName] = slices.Compact(names)
 	}
 
 	return baseImages
