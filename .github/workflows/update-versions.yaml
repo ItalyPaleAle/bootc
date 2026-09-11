@@ -22,7 +22,8 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'tools/go.mod'
-          cache-dependency-path: 'tools/go.sum'
+          # Do not cache in release workflows
+          cache: false
 
       # Compile the tools app
       - name: Compile tools app

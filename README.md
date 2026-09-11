@@ -177,6 +177,14 @@ To build images locally, you will need these tools installed:
       --tag "$(date +"%Y%m%d")"
    ```
 
+### Adding a container
+
+The build and attestation steps of the [Build Containers](./.github/workflows/build-containers.yaml) workflow are generated from the config files, between the `BEGIN GENERATED` and `END GENERATED` markers. After adding a container to a `config.yaml`, or removing one, regenerate them:
+
+```sh
+.bin/tools update-pipeline
+```
+
 ## Use with RHEL
 
 The Containerfiles are compatible with RHEL too, currently supporting RHEL 10 and 9. Due to licensing reasons, the RHEL-based images are not published from this repo automatically.
