@@ -2,14 +2,14 @@ baseImages:
   alma-linux-10:
     image: quay.io/almalinuxorg/almalinux-bootc
     tag: "10"
-    digest: sha256:64a78b5d36a2ab9b9441fabb59a0429a4c395fca8908f3c420d488b6c6ef35bc
+    digest: sha256:40edcbf5a54d41a8868a66069c3ce472d4fbe12c6c7953e0bd2747a546d7e26f
     architectures:
       - amd64
       - arm64
   alma-linux-rpi-10:
     image: quay.io/almalinuxorg/almalinux-bootc-rpi
     tag: "10"
-    digest: sha256:d74485762b4118677cf800ff8e8ced37a04e7f499bfc24a7b88ef8c85ed553e2
+    digest: sha256:92552fed403a23783f1669c1049f1b42372aff83651c5aa6eb1fa05f400a2041
     architectures:
       - arm64
   centos-stream-10:
