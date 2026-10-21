@@ -1,6 +1,6 @@
 module github.com/italypaleale/bootc/tools
 
-go 1.27.1
+go 1.27.3
 
 require (
 	github.com/regclient/regclient v0.11.6
