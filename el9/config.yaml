@@ -2,7 +2,7 @@ baseImages:
   alma-linux-9:
     image: quay.io/almalinuxorg/almalinux-bootc
     tag: "9"
-    digest: sha256:f68ba941116427bfbf2be0b55e19ac214d748000564d72d3c821da8060f7c8eb
+    digest: sha256:295f1f676cf173201f96c0981aeb7906b981f9e8ab896746fee4094279c4d1b5
     architectures:
       - amd64
       - arm64
