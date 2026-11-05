@@ -1,9 +1,9 @@
 name: k3s
 containerfile: Containerfile
-version: 1.37.1+k3s1
+version: 1.37.2+k3s1
 checksums: |-
-  92b94582eb7b34a8cf532e6006842b9ed215a6783cf56a3dd6271fd35243b2c0  k3s
-  a1561ca4aef8b99f5588a840d4468ac39c8c1cd92470bbcb9634823fa221741a  k3s-arm64
+  265b3ee6a3198ef14033c63ef46cbb32370d83795199fb6d1b01f21575eddbda  k3s
+  a779ccf1e5e2e33a62f5a29c2f1c0bbf99431e100579d4c10f0aa0742a6aa84b  k3s-arm64
 cmds:
   updateVersion: |
     curl -sL "https://api.github.com/repos/k3s-io/k3s/releases/latest" \
