@@ -9,7 +9,7 @@ baseImages:
   centos-stream-9:
     image: quay.io/centos-bootc/centos-bootc
     tag: stream9
-    digest: sha256:2e2c6cd1c05f2faef930f914fefcd738d41d6e384c1c863fead0e4e65180fd4c
+    digest: sha256:530f09e41f46c01682734b705deb0950d0b27efdd9085e79a4ab48e8bb00adc1
     architectures:
       - amd64
       - arm64
