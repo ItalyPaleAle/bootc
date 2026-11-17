@@ -1,9 +1,9 @@
 name: cloudflared
 containerfile: Containerfile
-version: 2026.11.0
+version: 2026.11.1
 checksums: |-
-  f5e426c0b40de1dcc6288b3fc3c8bffee14843606a8dc526b3f883b640a5aeab  cloudflared-linux-aarch64.rpm
-  e385445d3acb594b43f29f57dfc8683865e7bba1e73d97736f4b42ebbba578dd  cloudflared-linux-x86_64.rpm
+  b6faeb60d644df32864c5df7d16cab271c0ccb607709eccbbf8b13c89179e9b3  cloudflared-linux-aarch64.rpm
+  02d1dc1595efcfa7e26dbd3bd0ac1dd840c55017da3c4824f559f60f64d7551d  cloudflared-linux-x86_64.rpm
 cmds:
   updateVersion: |
     curl -Ls "https://api.github.com/repos/cloudflare/cloudflared/releases/latest" \
